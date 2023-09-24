@@ -1,0 +1,5 @@
+1. wiki.en herunterladen und in .vector_cache packen
+2. pip install urllib3==1.26.6
+3. pip install torchtext==0.10.0
+
+venv activieren: source venv/bin/activate
