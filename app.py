@@ -4,8 +4,8 @@ from flask_cors import CORS
 # from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
 # import torch
 import requests
-import deepmatcher as dm
-from bson import ObjectId
+import os
+
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:8080"}})
@@ -20,46 +20,6 @@ collectionJiraProjects = db["jiraProject"]
 collectionJiraIssues = db["jiraIssue"]
 collectionFeedback = db["feedback"]
 collectionFeedbackAssigned = db["feedback_assigned"]
-
-
-@app.route('/assign', methods=['POST'])
-def assign_feedback_to_jira_issues():
-    train, validation, test = dm.data.process(
-        path='test_data',
-        train='train.csv',
-        validation='validation.csv',
-        test='test.csv')
-    # train_table = train.get_raw_table()
-    # train_table.head()
-
-    model = dm.MatchingModel(attr_summarizer='hybrid')
-    model.run_train(
-        train,
-        validation,
-        epochs=10,
-        batch_size=16,
-        best_save_path='hybrid_model.pth',
-        pos_neg_ratio=3)
-    model.run_eval(test)
-
-    unlabeled = dm.data.process_unlabeled(
-        path='test_data/unlabeled.csv',
-        trained_model=model)
-
-    # predictions = model.run_prediction(unlabeled)
-    # predictions.head()
-    predictions = model.run_prediction(unlabeled, output_attributes=True)
-    # predictions.head()
-    predictions.to_csv('test_data/unlabeled_predictions.csv')
-    predictions_json = predictions.to_dict(orient='records')
-    # valid_predictions = model.run_prediction(validation, output_attributes=True)
-    # valid_predictions_json = valid_predictions.to_dict(orient='records')
-    rows = []
-    for _, row in predictions.iterrows():
-        rows.append(row.to_dict())
-        collectionFeedbackAssigned.insert_one(row.to_dict())
-    return jsonify(rows)
-
 
 @app.route('/update_all_issues', methods=['GET'])
 def update_all_issues():
@@ -78,7 +38,7 @@ def update_all_issues():
             collectionJiraIssues.update_one({"_id": issue["_id"]},
                                         {"$set": {"right_feedback_issue": highest_score_feedback["right_feedback_issue"]}})
 
-    return jsonify({"message": "Feedback für alle Issues aktualisiert"})
+    return jsonify({"message": "Feedback updated"})
 
 
 @app.route("/hitec/jira/feedback-assigned/load", methods=["GET"])
@@ -93,14 +53,14 @@ def load_feedback_assigned():
 # def save_feedback():
 #     feedback = request.json.get('feedback')
 #
-#     # Klassifizierung mit DistilBERT
+#     # classify with distilbert
 #     inputs = tokenizer(feedback, return_tensors='pt', padding=True, truncation=True)
 #     with torch.no_grad():
 #         outputs = model(**inputs)
 #     predicted_label = torch.argmax(outputs.logits).item()
 #     predicted_category = "bug" if predicted_label == 0 else "feature"
 #
-#     # Speichern in MongoDB
+#     # save in MongoDB
 #     feedback_data = {'text': feedback, 'category': predicted_category}
 #     collectionFeedback.insert_one(feedback_data)
 #
@@ -117,7 +77,7 @@ def load_feedback():
 
 @app.route('/save_excel_data', methods=['POST'])
 def save_excel_data():
-    excel_data = request.json.get('data')  # Hier sollte dein Excel-Daten-Array übergeben werden
+    excel_data = request.json.get('data')
 
     if excel_data:
         try:
@@ -143,7 +103,7 @@ def load_issue_types_from_jira_issues(project_name):
 
         response = requests.get(
             uri,
-            auth=("feeddashboard", "k69Ox1Pq"),
+            auth=(os.environ['username'], os.environ['password']),
             headers={"Accept": "application/json"}
         )
         response_json = response.json()
@@ -182,7 +142,7 @@ def load_issues_from_project(project_name):
         uri = f"https://jira-se.ifi.uni-heidelberg.de/rest/api/2/search?jql=project={project_name} AND issuetype='{issue_type}'&maxResults=520"
         response = requests.get(
             uri,
-            auth=("feeddashboard", "k69Ox1Pq"),
+            auth=(os.environ['username'], os.environ['password']),
             headers={"Accept": "application/json"}
         )
 
