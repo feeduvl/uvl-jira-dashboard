@@ -5,7 +5,8 @@ from flask_cors import CORS
 # import torch
 import requests
 import os
-
+import json
+import pandas as pd
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:8080"}})
@@ -19,34 +20,105 @@ db = client["jira-issues"]
 collectionJiraProjects = db["jiraProject"]
 collectionJiraIssues = db["jiraIssue"]
 collectionFeedback = db["feedback"]
-collectionFeedbackAssigned = db["feedback_assigned"]
-
-@app.route('/update_all_issues', methods=['GET'])
-def update_all_issues():
-    issues = list(collectionJiraIssues.find())
-
-    for issue in issues:
-        # Suchen Sie Feedbacks, die mit dem aktuellen Issue übereinstimmen
-        query = {"left_feedback_issue": issue["summary"]}
-        feedbacks = list(collectionFeedbackAssigned.find(query))
-
-        if feedbacks:
-            # Finden Sie das Feedback mit dem höchsten match_score
-            highest_score_feedback = max(feedbacks, key=lambda x: x["match_score"])
-
-            # Aktualisieren Sie das Issue mit dem gefundenen Feedback
-            collectionJiraIssues.update_one({"_id": issue["_id"]},
-                                        {"$set": {"right_feedback_issue": highest_score_feedback["right_feedback_issue"]}})
-
-    return jsonify({"message": "Feedback updated"})
+collectionKomootFeedback = db["komoot_feedback"]
+collectionKomootAnnotations = db["komoot_annotations"]
 
 
-@app.route("/hitec/jira/feedback-assigned/load", methods=["GET"])
-def load_feedback_assigned():
-    feedback = list(collectionFeedbackAssigned.find({}))
-    for element in feedback:
-        element["_id"] = str(element["_id"])
-    return feedback
+@app.route('/import_excel_to_mongodb', methods=['GET'])
+def import_excel_to_mongodb():
+    try:
+        # Read the Excel file into a Pandas DataFrame
+        excel_data = pd.read_excel('Komoot_AppReview.xlsx')
+
+        # Create a list to hold all the data
+        all_data = []
+
+        # Iterate over the rows of the DataFrame
+        for _, row in excel_data.iterrows():
+            document_data = {
+                'text': row[1],
+                'id': row[0]
+            }
+            all_data.append(document_data)
+
+        # Create the main document with all the data
+        main_document = {
+            'name': 'Komoot_AppReview',
+            'documents': all_data
+        }
+
+        # Insert the main document into MongoDB
+        collectionKomootFeedback.insert_one(main_document)
+
+        return jsonify({'message': 'Data successfully imported into MongoDB'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/upload_json_to_mongodb', methods=['POST'])
+def upload_json_to_mongodb():
+    try:
+        # Lese die JSON-Datei aus der POST-Anforderung
+        uploaded_json = request.get_json()
+
+        # Füge die JSON-Daten in die MongoDB-Sammlung ein
+        collectionKomootAnnotations.insert_one(uploaded_json)
+
+        return jsonify({'message': 'JSON-Datei erfolgreich in MongoDB hochgeladen'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/codes_names', methods=['GET'])
+def codes_names():
+    try:
+        # Verwende die find-Methode, um alle Dokumente mit einem "codes"-Array zu erhalten
+        documents_with_codes = collectionKomootAnnotations.find({"codes": {"$exists": True, "$not": {"$size": 0}}})
+        feedback_text = collectionKomootFeedback.find({})
+        # Extrahiere die "name"-Attribute aus jedem Element im "codes"-Array
+        names = []
+        for doc in documents_with_codes:
+            codes = doc.get('codes', [])
+            for feedback in feedback_text:
+                text = feedback.get('documents', [])
+                for feed in text:
+                    fe = feed.get('text')
+                    for code in codes:
+                        name = code.get('name')
+                        if name != '' and name in fe:
+                            names.append(name)
+
+        return jsonify({'names': names})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# @app.route('/update_all_issues', methods=['GET'])
+# def update_all_issues():
+#     issues = list(collectionJiraIssues.find())
+#
+#     for issue in issues:
+#         # Suchen Sie Feedbacks, die mit dem aktuellen Issue übereinstimmen
+#         query = {"left_feedback_issue": issue["summary"]}
+#         feedbacks = list(collectionFeedbackAssigned.find(query))
+#
+#         if feedbacks:
+#             # Finden Sie das Feedback mit dem höchsten match_score
+#             highest_score_feedback = max(feedbacks, key=lambda x: x["match_score"])
+#
+#             # Aktualisieren Sie das Issue mit dem gefundenen Feedback
+#             collectionJiraIssues.update_one({"_id": issue["_id"]},
+#                                         {"$set": {"right_feedback_issue": highest_score_feedback["right_feedback_issue"]}})
+#
+#     return jsonify({"message": "Feedback updated"})
+
+
+# @app.route("/hitec/jira/feedback-assigned/load", methods=["GET"])
+# def load_feedback_assigned():
+#     feedback = list(collectionFeedbackAssigned.find({}))
+#     for element in feedback:
+#         element["_id"] = str(element["_id"])
+#     return feedback
 
 
 # @app.route('/save-feedback', methods=['POST'])
