@@ -20,77 +20,90 @@ db = client["jira-issues"]
 collectionJiraProjects = db["jiraProject"]
 collectionJiraIssues = db["jiraIssue"]
 collectionFeedback = db["feedback"]
-collectionKomootFeedback = db["komoot_feedback"]
-collectionKomootAnnotations = db["komoot_annotations"]
+collectionAnnotations = db["annotations"]
+collectionFeedbackWithToreCategories = db["feedback_wth_tore"]
 
 
-@app.route('/import_excel_to_mongodb', methods=['GET'])
-def import_excel_to_mongodb():
+# @app.route('/import_excel_to_mongodb', methods=['GET'])
+# def import_excel_to_mongodb():
+#     try:
+#         # Read the Excel file into a Pandas DataFrame
+#         excel_data = pd.read_excel('Komoot_AppReview.xlsx')
+#
+#         # Create a list to hold all the data
+#         all_data = []
+#
+#         # Iterate over the rows of the DataFrame
+#         for _, row in excel_data.iterrows():
+#             document_data = {
+#                 'text': row[1],
+#                 'id': row[0]
+#             }
+#             all_data.append(document_data)
+#
+#         # Create the main document with all the data
+#         main_document = {
+#             'name': 'Komoot_AppReview',
+#             'documents': all_data
+#         }
+#
+#         # Insert the main document into MongoDB
+#         collectionKomootFeedback.insert_one(main_document)
+#
+#         return jsonify({'message': 'Data successfully imported into MongoDB'})
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
+
+
+# @app.route('/upload_json_to_mongodb', methods=['POST'])
+# def upload_json_to_mongodb():
+#     try:
+#         # Lese die JSON-Datei aus der POST-Anforderung
+#         uploaded_json = request.get_json()
+#
+#         # Füge die JSON-Daten in die MongoDB-Sammlung ein
+#         collectionKomootAnnotations.insert_one(uploaded_json)
+#
+#         return jsonify({'message': 'JSON-Datei erfolgreich in MongoDB hochgeladen'})
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/hitec/jira/assign_tore_to_feedback', methods=['GET'])
+def set_tore_categories():
     try:
-        # Read the Excel file into a Pandas DataFrame
-        excel_data = pd.read_excel('Komoot_AppReview.xlsx')
+        feedback_collection = collectionFeedbackWithToreCategories.find({})
+        docs = collectionAnnotations.distinct('docs')
+        codes = collectionAnnotations.distinct('codes')
+        tore_list = []
 
-        # Create a list to hold all the data
-        all_data = []
-
-        # Iterate over the rows of the DataFrame
-        for _, row in excel_data.iterrows():
-            document_data = {
-                'text': row[1],
-                'id': row[0]
-            }
-            all_data.append(document_data)
-
-        # Create the main document with all the data
-        main_document = {
-            'name': 'Komoot_AppReview',
-            'documents': all_data
-        }
-
-        # Insert the main document into MongoDB
-        collectionKomootFeedback.insert_one(main_document)
-
-        return jsonify({'message': 'Data successfully imported into MongoDB'})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/upload_json_to_mongodb', methods=['POST'])
-def upload_json_to_mongodb():
-    try:
-        # Lese die JSON-Datei aus der POST-Anforderung
-        uploaded_json = request.get_json()
-
-        # Füge die JSON-Daten in die MongoDB-Sammlung ein
-        collectionKomootAnnotations.insert_one(uploaded_json)
-
-        return jsonify({'message': 'JSON-Datei erfolgreich in MongoDB hochgeladen'})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/codes_names', methods=['GET'])
-def codes_names():
-    try:
-        # Verwende die find-Methode, um alle Dokumente mit einem "codes"-Array zu erhalten
-        documents_with_codes = collectionKomootAnnotations.find({"codes": {"$exists": True, "$not": {"$size": 0}}})
-        feedback_text = collectionKomootFeedback.find({})
-        # Extrahiere die "name"-Attribute aus jedem Element im "codes"-Array
-        names = []
-        for doc in documents_with_codes:
-            codes = doc.get('codes', [])
-            for feedback in feedback_text:
-                text = feedback.get('documents', [])
-                for feed in text:
-                    fe = feed.get('text')
+        for feedback in feedback_collection:
+            document_id = feedback.get('id')
+            for doc in docs:
+                doc_name = doc.get('name')
+                if document_id == doc_name:
+                    begin_index = doc.get('begin_index')
+                    end_index = doc.get('end_index')
                     for code in codes:
-                        name = code.get('name')
-                        if name != '' and name in fe:
-                            names.append(name)
+                        tokens = code.get('tokens', [])
+                        for token in tokens:
+                            if begin_index <= token <= end_index:
+                                tore = code.get('tore')
+                                if tore not in tore_list:
+                                    tore_list.append(tore)
 
-        return jsonify({'names': names})
+                    if tore_list:
+                        feedback_id = feedback.get('_id')
+                        update_criteria = {"_id": feedback_id}
+                        update_operation = {"$set": {"tore": tore_list}}
+                        collectionFeedbackWithToreCategories.update_one(update_criteria, update_operation)
+                        tore_list.clear()
+        feedback_new = list(collectionFeedbackWithToreCategories.find({}))
+        for element in feedback_new:
+            element["_id"] = str(element["_id"])
+        return feedback_new
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"message": str(e)})
 
 
 # @app.route('/update_all_issues', methods=['GET'])
@@ -141,28 +154,56 @@ def codes_names():
 
 @app.route("/hitec/jira/feedback/load", methods=["GET"])
 def load_feedback():
-    feedback = list(collectionFeedback.find({}))
-    for element in feedback:
-        element["_id"] = str(element["_id"])
-    return feedback
+    try:
+        if collectionFeedbackWithToreCategories.count_documents({}) > 0:
+            collectionFeedbackWithToreCategories.delete_many({})
+
+        feedback_collection = collectionFeedback.find({})
+
+        for feedback in feedback_collection:
+            documents = feedback.get('documents', [])
+
+            for doc in documents:
+                doc_id = doc.get('id')
+                doc_text = doc.get('text')
+
+                id_and_text = {
+                    'id': doc_id,
+                    'text': doc_text
+                }
+                collectionFeedbackWithToreCategories.insert_one(id_and_text)
+        feedback_new = list(collectionFeedbackWithToreCategories.find({}))
+        for element in feedback_new:
+            element["_id"] = str(element["_id"])
+        return feedback_new
+    except Exception as e:
+        return jsonify({"message": str(e)})
 
 
-@app.route('/save_excel_data', methods=['POST'])
-def save_excel_data():
-    excel_data = request.json.get('data')
+# @app.route("/hitec/jira/feedback/load", methods=["GET"])
+# def load_feedback():
+#     feedback_with_tore = list(collectionFeedbackWithToreCategories.find({}))
+#     for element in feedback_with_tore:
+#         element["_id"] = str(element["_id"])
+#     return feedback_with_tore
 
-    if excel_data:
-        try:
-            for row in excel_data:
-                id_value = row[1]
-                feedback_value = row[2]
-                collectionFeedback.insert_one(
-                    {'ID': id_value, 'Feedback': feedback_value})  # Jede Zeile einzeln in die Datenbank einfügen
-            return jsonify({'message': 'Excel data saved successfully'})
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-    else:
-        return jsonify({'error': 'No data provided'}), 400
+
+# @app.route('/save_excel_data', methods=['POST'])
+# def save_excel_data():
+#     excel_data = request.json.get('data')
+#
+#     if excel_data:
+#         try:
+#             for row in excel_data:
+#                 id_value = row[1]
+#                 feedback_value = row[2]
+#                 collectionFeedback.insert_one(
+#                     {'ID': id_value, 'Feedback': feedback_value})  # Jede Zeile einzeln in die Datenbank einfügen
+#             return jsonify({'message': 'Excel data saved successfully'})
+#         except Exception as e:
+#             return jsonify({'error': str(e)}), 500
+#     else:
+#         return jsonify({'error': 'No data provided'}), 400
 
 
 @app.route("/hitec/jira/issues/load/issueTypes/<project_name>")
