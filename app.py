@@ -23,6 +23,39 @@ collectionAnnotations = db["annotations"]
 collectionFeedbackWithToreCategories = db["feedback_wth_tore"]
 
 
+@app.route('/hitec/jira/assign_feedback_to_issues', methods=['POST'])
+def assign_feedback_to_issues():
+    return
+
+
+@app.route('/hitec/jira/assign_feedback_to_issues_by_tore', methods=['POST'])
+def assign_feedback_to_issues_by_tore():
+    feedback_collection = list(collectionFeedbackWithToreCategories.find({}))
+    jira_issues = collectionJiraIssues.find({})
+    assigned_feedback = []
+    for issue in jira_issues:
+        issue_type = issue.get('issueType')
+        for feedback in feedback_collection:
+            assigned_tore = feedback.get('tore', [])
+            for tore in assigned_tore:
+                if issue_type == tore:
+                    id_and_text = {
+                        'id': feedback.get('id'),
+                        'text': feedback.get('text')
+                    }
+                    assigned_feedback.append(id_and_text)
+        if assigned_feedback:
+            issue_id = issue.get('_id')
+            update_criteria = {"_id": issue_id}
+            update_operation = {"$set": {"feedback": assigned_feedback}}
+            collectionJiraIssues.update_one(update_criteria, update_operation)
+            assigned_feedback = []
+    issues_new = list(collectionJiraIssues.find({}))
+    for element in issues_new:
+        element["_id"] = str(element["_id"])
+    return issues_new
+
+
 @app.route('/hitec/jira/assign_tore_to_feedback/<annotation_name>', methods=['GET'])
 def set_tore_categories(annotation_name):
     try:
@@ -66,28 +99,30 @@ def set_issue_type_by_tore_category(tore_list):
         if category == "Task":
             issue_types.append("User Task")
         elif category == "Activity":
-            issue_types.append("User Sub-Task")
+            issue_types.append("User Subtask")#?
             issue_types.append("User Story")
         elif category == "Domain Data":
-            issue_types.append("Domain Data Diagram")
+            issue_types.append("Domain Data Diagram")#Diagram?
             issue_types.append("User Task")
-            issue_types.append("User Sub-Task")
+            issue_types.append("User Subtask")#User Sub-Task?
         elif category == "Stakeholder":
             issue_types.append("Persona")
             issue_types.append("User Role")
             issue_types.append("User Story")
         elif category == "Interaction":
             issue_types.append("System Function")
-            issue_types.append("UI-Structure Diagram")
+            issue_types.append("UI-Structure Diagram")#?
         elif category == "Interaction Data":
             issue_types.append("System Function")
             issue_types.append("Workspace")
         elif category == "Workspace":
             issue_types.append("Workspace")
-            issue_types.append("UI-Structure Diagram")
+            issue_types.append("UI-Structure Diagram")#?
         elif category == "System Function":
             issue_types.append("System Function")
-    return issue_types
+    types_set = set(issue_types)
+    types_list = list(types_set)
+    return types_list
 
 
 @app.route("/hitec/jira/feedback/load/<feedback_name>", methods=["GET"])
@@ -120,14 +155,21 @@ def load_feedback(feedback_name):
 
 @app.route('/hitec/jira/get_feedback', methods=['GET'])
 def get_feedback():
+    issues = list(collectionFeedbackWithToreCategories.find({}))
+    for element in issues:
+        element["_id"] = str(element["_id"])
+    return issues
+
+@app.route('/hitec/jira/get_feedback_names', methods=['GET'])
+def get_feedback_names():
     feedback = collectionFeedback.find({})
     names_list = [doc["name"] for doc in feedback]
     return names_list
 
 
-@app.route('/hitec/jira/get_annotations', methods=['GET'])
-def get_annotations():
-    annotations = collectionFeedback.find({})
+@app.route('/hitec/jira/get_annotations_names', methods=['GET'])
+def get_annotations_names():
+    annotations = collectionAnnotations.find({})
     names_list = [doc["name"] for doc in annotations]
     return names_list
 
