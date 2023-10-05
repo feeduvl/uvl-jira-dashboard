@@ -1,12 +1,12 @@
 # from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
 # import torch
 from flask import Flask
-from flask_cors import CORS
+#from flask_cors import CORS
 from controller.feedback import feedback_bp
 from controller.jira import jira_issue_bp
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "http://localhost:8080"}})
+#CORS(app, resources={r"/*": {"origins": "http://localhost:8080"}})
 
 # tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
 # model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=2)
@@ -16,7 +16,7 @@ app.register_blueprint(feedback_bp, url_prefix='/hitec/jira/feedback')
 app.register_blueprint(jira_issue_bp, url_prefix='/hitec/jira/issues')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=9646)
 
 # @app.route('/update_all_issues', methods=['GET'])
 # def update_all_issues():
