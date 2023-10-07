@@ -13,7 +13,7 @@ dbFeedback = client["concepts_data"]
 collectionJiraIssues = dbIssues["jiraIssue"]
 collectionFeedback = dbFeedback["dataset"]
 collectionAnnotations = dbFeedback["annotation"]
-collectionFeedbackWithToreCategories = dbIssues["feedback_wth_tore"]
+collectionFeedbackWithToreCategories = dbIssues["feedback_with_tore"]
 
 
 @feedback_bp.route('/assign_feedback_to_issues', methods=['POST'])
