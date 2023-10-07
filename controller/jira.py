@@ -7,31 +7,10 @@ from pymongo import MongoClient
 
 jira_issue_bp = Blueprint('jira_issue', __name__)
 
-client = MongoClient("mongodb://mongo:27017")
+client = MongoClient("mongodb://mongo:27017/")
 dbIssues = client["jira-issues"]
-dbIssues1 = client["jira"]
-collect = dbIssues1["test"]
 collectionJiraProjects = dbIssues["jiraProject"]
 collectionJiraIssues = dbIssues["jiraIssue"]
-
-
-@jira_issue_bp.route('/test', methods=['GET'])
-def string_speichern():
-
-    data = request.get_json()
-
-    if 'text' not in data:
-        return jsonify({"error": "Der 'text'-Schlüssel fehlt im JSON."}), 400
-
-    text = data['text']
-
-    # String in der MongoDB-Sammlung speichern
-    result = collect.insert_one({"text": text})
-
-    if result.inserted_id:
-        return jsonify({"message": "String erfolgreich gespeichert."}), 200
-    else:
-        return jsonify({"error": "Fehler beim Speichern des Strings."}), 500
 
 
 @jira_issue_bp.route("/load/issues/<project_name>", methods=["POST"])
