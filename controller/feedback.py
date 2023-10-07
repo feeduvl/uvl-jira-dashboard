@@ -12,7 +12,7 @@ dbIssues = client["jira-issues"]
 dbFeedback = client["concepts_data"]
 collectionJiraIssues = dbIssues["jiraIssue"]
 collectionFeedback = dbFeedback["dataset"]
-collectionAnnotations = dbFeedback["annotations"]
+collectionAnnotations = dbFeedback["annotation"]
 collectionFeedbackWithToreCategories = dbIssues["feedback_wth_tore"]
 
 
