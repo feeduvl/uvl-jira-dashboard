@@ -17,7 +17,7 @@ app.register_blueprint(feedback_bp, url_prefix='/hitec/jira/feedback')
 app.register_blueprint(jira_issue_bp, url_prefix='/hitec/jira/issues')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=9647)
 
 # @app.route('/update_all_issues', methods=['GET'])
 # def update_all_issues():
