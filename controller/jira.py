@@ -1,17 +1,37 @@
-from flask import Blueprint
 import os
 # from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
 # import torch
 import requests
-from flask import Flask, request, jsonify
+from flask import Blueprint, request, jsonify
 from pymongo import MongoClient
 
 jira_issue_bp = Blueprint('jira_issue', __name__)
 
-client = MongoClient("mongodb://localhost:27017/")
-db = client["jira-issues"]
-collectionJiraProjects = db["jiraProject"]
-collectionJiraIssues = db["jiraIssue"]
+client = MongoClient("mongodb://mongodb:27017/mongo")
+dbIssues = client["jira-issues"]
+dbIssues1 = client["jira"]
+collect = dbIssues1["test"]
+collectionJiraProjects = dbIssues["jiraProject"]
+collectionJiraIssues = dbIssues["jiraIssue"]
+
+
+@jira_issue_bp.route('/test', methods=['GET'])
+def string_speichern():
+
+    data = request.get_json()
+
+    if 'text' not in data:
+        return jsonify({"error": "Der 'text'-Schlüssel fehlt im JSON."}), 400
+
+    text = data['text']
+
+    # String in der MongoDB-Sammlung speichern
+    result = collect.insert_one({"text": text})
+
+    if result.inserted_id:
+        return jsonify({"message": "String erfolgreich gespeichert."}), 200
+    else:
+        return jsonify({"error": "Fehler beim Speichern des Strings."}), 500
 
 
 @jira_issue_bp.route("/load/issues/<project_name>", methods=["POST"])
@@ -25,7 +45,7 @@ def load_issues_from_project(project_name):
         uri = f"https://jira-se.ifi.uni-heidelberg.de/rest/api/2/search?jql=project={project_name} AND issuetype='{issue_type}'&maxResults=520"
         response = requests.get(
             uri,
-            auth=(os.environ['username'], os.environ['password']),
+            auth=(os.environ.get('USERNAME'), os.environ.get('PASSWORD')),
             headers={"Accept": "application/json"}
         )
 
@@ -145,7 +165,7 @@ def get_all_project_names():
     return project_names
 
 
-@jira_issue_bp.route("/load/issueTypes/<project_name>")
+@jira_issue_bp.route("/load/issueTypes/<project_name>", methods=["GET"])
 def load_issue_types_from_jira_issues(project_name):
     issue_types = []
 
@@ -155,13 +175,14 @@ def load_issue_types_from_jira_issues(project_name):
 
         response = requests.get(
             uri,
-            auth=(os.environ['username'], os.environ['password']),
+            auth=(os.environ.get('USERNAME'), os.environ.get('PASSWORD')),
             headers={"Accept": "application/json"}
         )
         response_json = response.json()
         set_new_project_names(response_json["issues"][0]["fields"]["project"]["name"])
         total_issues = int(response_json.get("total", 0))
 
+        print("ist drin")
         for i in range(total_issues):
             issue_type = response_json["issues"][i]["fields"]["issuetype"]["name"]
             if issue_type not in issue_types:

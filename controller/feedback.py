@@ -7,17 +7,20 @@ from pymongo import MongoClient
 
 feedback_bp = Blueprint('feedback', __name__)
 
-client = MongoClient("mongodb://localhost:27017/")
-db = client["jira-issues"]
-collectionJiraIssues = db["jiraIssue"]
-collectionFeedback = db["feedback"]
-collectionAnnotations = db["annotations"]
-collectionFeedbackWithToreCategories = db["feedback_wth_tore"]
+client = MongoClient("mongodb://mongodb:27017/mongo")
+dbIssues = client["jira-issues"]
+dbFeedback = client["concepts_data"]
+collectionJiraIssues = dbIssues["jiraIssue"]
+collectionFeedback = dbFeedback["dataset"]
+collectionAnnotations = dbFeedback["annotations"]
+collectionFeedbackWithToreCategories = dbFeedback["feedback_wth_tore"]
 
 
 @feedback_bp.route('/assign_feedback_to_issues', methods=['POST'])
 def assign_feedback_to_issues():
-    return
+    print("test")
+    print(os.environ.get('PASSWORD'))
+    return "HALLO " + os.environ.get('USERNAME')
 
 
 @feedback_bp.route('/assign_feedback_to_issues_by_tore', methods=['POST'])
@@ -52,31 +55,34 @@ def assign_feedback_to_issues_by_tore():
 def set_tore_categories(annotation_name):
     try:
         feedback_collection = collectionFeedbackWithToreCategories.find({})
+        annotations = collectionAnnotations.find({})
         docs = collectionAnnotations.distinct('docs')
         codes = collectionAnnotations.distinct('codes')
         tore_list = []
+        for annotation in annotations:
+            annotation_name1 = annotation.get('name')
+            if annotation_name1 == annotation_name:
+                for feedback in feedback_collection:
+                    document_id = feedback.get('id')
+                    for doc in docs:
+                        doc_name = doc.get('name')
+                        if document_id == doc_name:
+                            begin_index = doc.get('begin_index')
+                            end_index = doc.get('end_index')
+                            for code in codes:
+                                tokens = code.get('tokens', [])
+                                for token in tokens:
+                                    if begin_index <= token <= end_index:
+                                        tore = code.get('tore')
+                                        if tore not in tore_list:
+                                            tore_list.append(tore)
 
-        for feedback in feedback_collection:
-            document_id = feedback.get('id')
-            for doc in docs:
-                doc_name = doc.get('name')
-                if document_id == doc_name:
-                    begin_index = doc.get('begin_index')
-                    end_index = doc.get('end_index')
-                    for code in codes:
-                        tokens = code.get('tokens', [])
-                        for token in tokens:
-                            if begin_index <= token <= end_index:
-                                tore = code.get('tore')
-                                if tore not in tore_list:
-                                    tore_list.append(tore)
-
-                    if tore_list:
-                        feedback_id = feedback.get('_id')
-                        update_criteria = {"_id": feedback_id}
-                        update_operation = {"$set": {"tore": set_issue_type_by_tore_category(tore_list)}}
-                        collectionFeedbackWithToreCategories.update_one(update_criteria, update_operation)
-                        tore_list.clear()
+                            if tore_list:
+                                feedback_id = feedback.get('_id')
+                                update_criteria = {"_id": feedback_id}
+                                update_operation = {"$set": {"tore": set_issue_type_by_tore_category(tore_list)}}
+                                collectionFeedbackWithToreCategories.update_one(update_criteria, update_operation)
+                                tore_list.clear()
         feedback_new = list(collectionFeedbackWithToreCategories.find({}))
         for element in feedback_new:
             element["_id"] = str(element["_id"])
@@ -126,17 +132,19 @@ def load_feedback(feedback_name):
         feedback_collection = collectionFeedback.find({})
 
         for feedback in feedback_collection:
-            documents = feedback.get('documents', [])
+            feedback_name1 = feedback.get('name')
+            if feedback_name1 == feedback_name:
+                documents = feedback.get('documents', [])
 
-            for doc in documents:
-                doc_id = doc.get('id')
-                doc_text = doc.get('text')
+                for doc in documents:
+                    doc_id = doc.get('id')
+                    doc_text = doc.get('text')
 
-                id_and_text = {
-                    'id': doc_id,
-                    'text': doc_text
-                }
-                collectionFeedbackWithToreCategories.insert_one(id_and_text)
+                    id_and_text = {
+                        'id': doc_id,
+                        'text': doc_text
+                    }
+                    collectionFeedbackWithToreCategories.insert_one(id_and_text)
         feedback_new = list(collectionFeedbackWithToreCategories.find({}))
         for element in feedback_new:
             element["_id"] = str(element["_id"])

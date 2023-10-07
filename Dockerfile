@@ -14,4 +14,4 @@ RUN pip install -r requirements.txt
 COPY . .
 
 # Definieren Sie den Befehl, um Ihre Flask-Anwendung auszuführen
-CMD ["python", "app.py", "--port", "8081"]
+CMD ["python", "app.py", "--host", "0.0.0.0", "--port", "9647"]
