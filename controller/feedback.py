@@ -7,13 +7,13 @@ from pymongo import MongoClient
 
 feedback_bp = Blueprint('feedback', __name__)
 
-client = MongoClient("mongodb://mongodb:27017/mongo")
+client = MongoClient("mongodb://mongo:27017/")
 dbIssues = client["jira-issues"]
 dbFeedback = client["concepts_data"]
 collectionJiraIssues = dbIssues["jiraIssue"]
 collectionFeedback = dbFeedback["dataset"]
 collectionAnnotations = dbFeedback["annotations"]
-collectionFeedbackWithToreCategories = dbFeedback["feedback_wth_tore"]
+collectionFeedbackWithToreCategories = dbIssues["feedback_wth_tore"]
 
 
 @feedback_bp.route('/assign_feedback_to_issues', methods=['POST'])

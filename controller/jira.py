@@ -7,7 +7,7 @@ from pymongo import MongoClient
 
 jira_issue_bp = Blueprint('jira_issue', __name__)
 
-client = MongoClient("mongodb://mongodb:27017/mongo")
+client = MongoClient("mongodb://mongo:27017")
 dbIssues = client["jira-issues"]
 dbIssues1 = client["jira"]
 collect = dbIssues1["test"]
