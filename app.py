@@ -1,23 +1,17 @@
-# from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
-# import torch
 from flask import Flask
 #from flask_cors import CORS
 from controller.feedback import feedback_bp
 from controller.jira import jira_issue_bp
-import os
 
 app = Flask(__name__)
 #CORS(app, resources={r"/*": {"origins": "http://localhost:8080"}})
-
-# tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
-# model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=2)
-# model.eval()
 
 app.register_blueprint(feedback_bp, url_prefix='/hitec/jira/feedback')
 app.register_blueprint(jira_issue_bp, url_prefix='/hitec/jira/issues')
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=9647)
+
 
 # @app.route('/update_all_issues', methods=['GET'])
 # def update_all_issues():
@@ -37,6 +31,35 @@ if __name__ == '__main__':
 #                                         {"$set": {"right_feedback_issue": highest_score_feedback["right_feedback_issue"]}})
 #
 #     return jsonify({"message": "Feedback updated"})
+
+
+# @feedback_bp.route('/distilbert', methods=['POST'])
+# def save_feedback():
+#     feedback = "request.json.get('feedback')"
+#     feedback_collection = collectionFeedbackWithToreCategories.find({})
+#     issues_collection = collectionJiraIssues.find({})
+#     feedback_text_list = []
+#     issues_summary_list = []
+#     for feedback in feedback_collection:
+#         text = feedback.get("text")
+#         feedback_text_list.append(text)
+#     for issue in issues_collection:
+#         summary = issue.get("summary")
+#         issues_summary_list.append(summary)
+#
+#
+#     # classify with distilbert
+#     inputs = tokenizer(feedback, return_tensors='pt', padding=True, truncation=True)
+#     with torch.no_grad():
+#         outputs = model(**inputs)
+#     predicted_label = torch.argmax(outputs.logits).item()
+#     predicted_category = "bug" if predicted_label == 0 else "feature"
+#
+#     # save in MongoDB
+#     feedback_data = {'text': feedback, 'category': predicted_category}
+#     collectionFeedback.insert_one(feedback_data)
+#
+#     return jsonify({'message': 'Feedback saved and classified successfully.'})
 
 
 # @app.route("/hitec/jira/feedback-assigned/load", methods=["GET"])

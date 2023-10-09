@@ -1,9 +1,8 @@
-import os
-# from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
-# import torch
-import requests
-from flask import Flask, request, jsonify, Blueprint
+from transformers import DistilBertTokenizer, DistilBertModel
+import torch
+from flask import jsonify, Blueprint
 from pymongo import MongoClient
+from sklearn.metrics.pairwise import cosine_similarity
 
 feedback_bp = Blueprint('feedback', __name__)
 
@@ -15,36 +14,83 @@ collectionFeedback = dbFeedback["dataset"]
 collectionAnnotations = dbFeedback["annotation"]
 collectionFeedbackWithToreCategories = dbIssues["feedback_with_tore"]
 
+tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
+model = DistilBertModel.from_pretrained('distilbert-base-uncased')
+
 
 @feedback_bp.route('/assign_feedback_to_issues', methods=['POST'])
-def assign_feedback_to_issues():
-    print("test")
-    print(os.environ.get('PASSWORD'))
-    return "HALLO " + os.environ.get('USERNAME')
+def calculate_similarities():
+    feedback_collection = list(collectionFeedbackWithToreCategories.find({}))
+    issues_collection = collectionJiraIssues.find({})
+
+    results = []
+
+    for issue in issues_collection:
+        summary = issue.get("summary")
+        similar_feedbacks = []
+
+        summary_embedding = get_embeddings(summary)
+
+        for feedback in feedback_collection:
+            feedback_text = feedback.get("text")
+            text_embedding = get_embeddings(feedback_text)
+
+            similarity = cosine_similarity([summary_embedding], [text_embedding])[0][0]
+
+            feedback_with_similarity = {
+                'id': feedback.get('id'),
+                "text": feedback_text,
+                "similarity": float(similarity)
+            }
+            similar_feedbacks.append(feedback_with_similarity)
+
+        if similar_feedbacks:
+            issue_id = issue.get('_id')
+            update_criteria = {"_id": issue_id}
+            update_operation = {"$set": {"assigned_feedback": similar_feedbacks}}
+            collectionJiraIssues.update_one(update_criteria, update_operation)
+
+        results.append({"summary": summary, "similar_feedbacks": similar_feedbacks})
+
+    return jsonify(results)
+
+
+def get_embeddings(text):
+    inputs = tokenizer(text, return_tensors='pt', truncation=True, padding=True)
+    with torch.no_grad():
+        outputs = model(**inputs)
+    return outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
 
 
 @feedback_bp.route('/assign_feedback_to_issues_by_tore', methods=['POST'])
 def assign_feedback_to_issues_by_tore():
     feedback_collection = list(collectionFeedbackWithToreCategories.find({}))
     jira_issues = collectionJiraIssues.find({})
-    assigned_feedback = []
     for issue in jira_issues:
         issue_type = issue.get('issueType')
+        summary = issue.get("summary")
+        similar_feedbacks = []
+        summary_embedding = get_embeddings(summary)
         for feedback in feedback_collection:
             assigned_tore = feedback.get('tore', [])
+            feedback_text = feedback.get("text")
             for tore in assigned_tore:
                 if issue_type == tore:
-                    id_and_text = {
+                    text_embedding = get_embeddings(feedback_text)
+
+                    similarity = cosine_similarity([summary_embedding], [text_embedding])[0][0]
+
+                    feedback_with_similarity = {
                         'id': feedback.get('id'),
-                        'text': feedback.get('text')
+                        "text": feedback_text,
+                        "similarity": float(similarity)
                     }
-                    assigned_feedback.append(id_and_text)
-        if assigned_feedback:
+                    similar_feedbacks.append(feedback_with_similarity)
+        if similar_feedbacks:
             issue_id = issue.get('_id')
             update_criteria = {"_id": issue_id}
-            update_operation = {"$set": {"feedback": assigned_feedback}}
+            update_operation = {"$set": {"assigned_feedback_with_tore": similar_feedbacks}}
             collectionJiraIssues.update_one(update_criteria, update_operation)
-            assigned_feedback = []
     issues_new = list(collectionJiraIssues.find({}))
     for element in issues_new:
         element["_id"] = str(element["_id"])

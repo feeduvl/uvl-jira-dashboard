@@ -1,6 +1,4 @@
 import os
-# from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
-# import torch
 import requests
 from flask import Blueprint, request, jsonify
 from pymongo import MongoClient
