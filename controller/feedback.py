@@ -3,6 +3,10 @@ import torch
 from flask import jsonify, Blueprint
 from pymongo import MongoClient
 from sklearn.metrics.pairwise import cosine_similarity
+import spacy
+
+# Laden Sie ein Spacy-Modell mit dem POS-Tagger (z.B., "en_core_web_sm")
+nlp = spacy.load("en_core_web_sm")
 
 feedback_bp = Blueprint('feedback', __name__)
 
@@ -56,7 +60,11 @@ def calculate_similarities():
 
 
 def get_embeddings(text):
-    inputs = tokenizer(text, return_tensors='pt', truncation=True, padding=True)
+    doc = nlp(text)
+    nouns = [token.text for token in doc if token.pos_ == "NOUN"]
+    embedded_text = ' '.join(nouns)
+
+    inputs = tokenizer(embedded_text, return_tensors='pt', truncation=True, padding=True)
     with torch.no_grad():
         outputs = model(**inputs)
     return outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
@@ -143,25 +151,25 @@ def set_issue_type_by_tore_category(tore_list):
         if category == "Task":
             issue_types.append("User Task")
         elif category == "Activity":
-            issue_types.append("User Subtask")  # ?
+            issue_types.append("User Subtask")  # User Sub-Task?
             issue_types.append("User Story")
         elif category == "Domain Data":
-            issue_types.append("Domain Data Diagram")  # Diagram?
+            issue_types.append("Diagram")  # Domain Data Diagram?
             issue_types.append("User Task")
             issue_types.append("User Subtask")  # User Sub-Task?
         elif category == "Stakeholder":
             issue_types.append("Persona")
-            issue_types.append("User Role")
+            issue_types.append("User Role")  # Role?
             issue_types.append("User Story")
         elif category == "Interaction":
             issue_types.append("System Function")
-            issue_types.append("UI-Structure Diagram")  # ?
+            issue_types.append("Diagram")  # UI-Structure Diagram?
         elif category == "Interaction Data":
             issue_types.append("System Function")
             issue_types.append("Workspace")
         elif category == "Workspace":
             issue_types.append("Workspace")
-            issue_types.append("UI-Structure Diagram")  # ?
+            issue_types.append("Diagram")  # UI-Structure Diagram?
         elif category == "System Function":
             issue_types.append("System Function")
     types_set = set(issue_types)
