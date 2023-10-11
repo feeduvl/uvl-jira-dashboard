@@ -5,7 +5,6 @@ from pymongo import MongoClient
 from sklearn.metrics.pairwise import cosine_similarity
 import spacy
 
-# Laden Sie ein Spacy-Modell mit dem POS-Tagger (z.B., "en_core_web_sm")
 nlp = spacy.load("en_core_web_sm")
 
 feedback_bp = Blueprint('feedback', __name__)
