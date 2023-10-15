@@ -4,16 +4,16 @@ services:
     image: mongo:latest
     container_name: mongo
     ports:
-      - "27017:27017"  # Port für die MongoDB
+      - "27017:27017"
 
   flask-app:
-    build: ./ # Verweis auf das Verzeichnis mit Ihrer Flask-Anwendung
+    build: ./
     container_name: flask-app
     ports:
-      - "9647:9647"  # Port für Ihre Flask-Anwendung
+      - "9647:9647"
     environment:
-      - MONGO_URI=mongodb://mongodb:27017/mongo  # Verbindungs-URI zur MongoDB
+      - MONGO_URI=mongodb://mongodb:27017/mongo
 
     depends_on:
-      - mongodb  # Flask-App wartet auf die Verfügbarkeit der MongoDB
+      - mongodb
 

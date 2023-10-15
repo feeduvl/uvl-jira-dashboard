@@ -1,6 +1,7 @@
+from bson import ObjectId
 from transformers import DistilBertTokenizer, DistilBertModel
 import torch
-from flask import jsonify, Blueprint
+from flask import jsonify, Blueprint, request
 from pymongo import MongoClient
 from sklearn.metrics.pairwise import cosine_similarity
 import spacy
@@ -226,3 +227,72 @@ def get_annotations_names():
     annotations = collectionAnnotations.find({})
     names_list = [doc["name"] for doc in annotations]
     return names_list
+
+
+@feedback_bp.route('/add_feedback_to_issues_list', methods=['POST'])
+def add_feedback_to_issues_list():
+    data = request.get_json()
+    issue_key = data['issue_key']
+    selected_feedback = data['selected_feedback']
+    issue = collectionJiraIssues.find_one({"key": issue_key})
+    if issue:
+        updated_feedback = issue['assigned_feedback']
+        new_feedback_to_add = []
+        for item in selected_feedback:
+            feedback_id = item['id']
+            feedback_text = item['text']
+            if all(feedback_id != feedback['id'] for feedback in updated_feedback):
+                new_feedback_to_add.append({"id": feedback_id, "text": feedback_text})
+        if new_feedback_to_add:
+            collectionJiraIssues.update_one({"_id": ObjectId(issue['_id'])},
+                                            {"$push": {"assigned_feedback": {"$each": new_feedback_to_add}}})
+        updated_issue = collectionJiraIssues.find_one({"key": issue_key})
+        return jsonify({'updated_feedback': updated_issue['assigned_feedback']})
+    else:
+        return jsonify({'error': 'Issue not found.'})
+
+
+@feedback_bp.route('/add_tore_feedback_to_issues_list', methods=['POST'])
+def add_tore_feedback_to_issues_list():
+    data = request.get_json()
+    issue_key = data['issue_key']
+    selected_feedback = data['selected_feedback']
+    issue = collectionJiraIssues.find_one({"key": issue_key})
+    if issue:
+        updated_feedback = issue['assigned_feedback_with_tore']
+        new_feedback_to_add = []
+        for item in selected_feedback:
+            feedback_id = item['id']
+            feedback_text = item['text']
+            if all(feedback_id != feedback['id'] for feedback in updated_feedback):
+                new_feedback_to_add.append({"id": feedback_id, "text": feedback_text})
+        collectionJiraIssues.update_one({"_id": ObjectId(issue['_id'])},
+                                        {"$push": {"assigned_feedback_with_tore": {"$each": new_feedback_to_add}}})
+        updated_issue = collectionJiraIssues.find_one({"key": issue_key})
+        return jsonify({'updated_feedback': updated_issue['assigned_feedback_with_tore']})
+    else:
+        return jsonify({'error': 'Issue not found.'})
+
+
+@feedback_bp.route('/delete_feedback/<issue_key>/<feedback_id>', methods=['DELETE'])
+def delete_feedback(issue_key, feedback_id):
+    issue = collectionJiraIssues.find_one({"key": issue_key})
+    if issue:
+        updated_feedback = [item for item in issue['assigned_feedback'] if item['id'] != feedback_id]
+        collectionJiraIssues.update_one({"_id": ObjectId(issue['_id'])},
+                                        {"$set": {"assigned_feedback": updated_feedback}})
+        return jsonify({'updated_feedback': updated_feedback})
+    else:
+        return jsonify({'error': 'Issue not found.'})
+
+
+@feedback_bp.route('/delete_tore_feedback/<issue_key>/<feedback_id>', methods=['DELETE'])
+def delete_tore_feedback(issue_key, feedback_id):
+    issue = collectionJiraIssues.find_one({"key": issue_key})
+    if issue:
+        updated_feedback = [item for item in issue['assigned_feedback_with_tore'] if item['id'] != feedback_id]
+        collectionJiraIssues.update_one({"_id": ObjectId(issue['_id'])},
+                                        {"$set": {"assigned_feedback_with_tore": updated_feedback}})
+        return jsonify({'updated_feedback': updated_feedback})
+    else:
+        return jsonify({'error': 'Issue not found.'})
