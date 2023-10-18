@@ -31,10 +31,11 @@ def load_issues_from_project(project_name):
 
         for i in range(total_issues):
             issue_key = response_json["issues"][i]["key"]
+            description = response_json["issues"][i]["fields"]["description"]
             issue_type = response_json["issues"][i]["fields"]["issuetype"]["name"]
             project_name = response_json["issues"][i]["fields"]["project"]["name"]
             summary = response_json["issues"][i]["fields"]["summary"]
-            issue = {"key": issue_key, "issueType": issue_type, "projectName": project_name, "summary": summary}
+            issue = {"key": issue_key, "description": description, "issueType": issue_type, "projectName": project_name, "summary": summary}
             list.append(issue)
 
     return jsonify(list)
@@ -51,11 +52,13 @@ def import_jira_issues():
         project_name = item["projectName"]
         issue_type = item["issueType"]
         summary = item["summary"]
+        description = item["description"]
         jira_issue = {
             "key": key,
             "issueType": issue_type,
             "projectName": project_name,
-            "summary": summary
+            "summary": summary,
+            "description": description
         }
         saved_issue = collectionJiraIssues.insert_one(jira_issue)
         saved_issue_info = {
@@ -63,7 +66,8 @@ def import_jira_issues():
             "key": key,
             "issueType": issue_type,
             "projectName": project_name,
-            "summary": summary
+            "summary": summary,
+            "description": description
         }
         saved_issues.append(saved_issue_info)
 
@@ -80,11 +84,13 @@ def add_jira_issues():
         project_name = item["projectName"]
         issue_type = item["issueType"]
         summary = item["summary"]
+        description = item["description"]
         jira_issue = {
             "key": key,
             "issueType": issue_type,
             "projectName": project_name,
-            "summary": summary
+            "summary": summary,
+            "description": description
         }
         already_used = any(jira_issue["key"] == key for jira_issue in saved_issues)
         if not already_used:
@@ -172,8 +178,6 @@ def load_issue_types_from_jira_issues(project_name):
 
 def set_new_project_names(project_name):
     filter_query = {"name": project_name}
-    # matching_elements = list(collectionJiraProjects.find(filter_query))
-
     if list(collectionJiraProjects.find(filter_query)):
         return jsonify({"message": "Einträge mit dem Namen 'test' gefunden."})
     else:

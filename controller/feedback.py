@@ -31,9 +31,10 @@ def calculate_similarities():
 
     for issue in issues_collection:
         summary = issue.get("summary")
+        description = issue.get("description")
+        issue_text = summary+description
         similar_feedbacks = []
-
-        summary_embedding = get_embeddings(summary)
+        summary_embedding = get_embeddings(issue_text)
 
         for feedback in feedback_collection:
             feedback_text = feedback.get("text")
@@ -61,13 +62,34 @@ def calculate_similarities():
 
 def get_embeddings(text):
     doc = nlp(text)
-    nouns = [token.text for token in doc if token.pos_ == "NOUN"]
-    embedded_text = ' '.join(nouns)
+    nouns_and_verbs = [token.text for token in doc if token.pos_ in ("NOUN", "VERB")]
 
-    inputs = tokenizer(embedded_text, return_tensors='pt', truncation=True, padding=True)
+    tokens = tokenizer(text, return_tensors="pt")
     with torch.no_grad():
-        outputs = model(**inputs)
-    return outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
+        outputs = model(**tokens)
+    embedding = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
+
+    embeddings = []
+
+    if nouns_and_verbs:
+        for word in nouns_and_verbs:
+            # tokenize word
+            word_tokens = tokenizer.tokenize(word)
+
+            # convert token-sequenz to String
+            tokenized_text = tokenizer.convert_ids_to_tokens(tokens["input_ids"][0])
+
+            # search for word in tokenized String
+            for i in range(len(tokenized_text) - len(word_tokens) + 1):
+                if tokenized_text[i:i + len(word_tokens)] == word_tokens:
+                    word_embedding = outputs.last_hidden_state[0, i:i + len(word_tokens), :].mean(dim=0).numpy()
+                    embeddings.append(word_embedding)
+    # Creating an overall embedding for the set by averaging the embeddings
+    if embeddings:
+        summary_embedding = sum(embeddings) / len(embeddings)
+        return summary_embedding
+    else:
+        return embedding
 
 
 @feedback_bp.route('/assign_feedback_to_issues_by_tore', methods=['POST'])
