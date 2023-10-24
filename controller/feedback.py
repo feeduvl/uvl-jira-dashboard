@@ -1,16 +1,13 @@
 from flask import jsonify, Blueprint
 from pymongo import MongoClient
 
-
 feedback_bp = Blueprint('feedback', __name__)
 
-client = MongoClient("mongodb://localhost:27017/")
+client = MongoClient("mongodb://mongo:27017/")
 dbIssues = client["jira_dashboard"]
 dbFeedback = client["concepts_data"]
-# collectionFeedback = dbFeedback["dataset"]
-# collectionAnnotations = dbFeedback["annotation"]
-collection_feedback = dbFeedback["test_ds"]
-collection_annotations = dbFeedback["test_anno"]
+collection_feedback = dbFeedback["dataset"]
+collection_annotations = dbFeedback["annotation"]
 collection_imported_feedback = dbIssues["imported_feedback"]
 collection_assigned_feedback = dbIssues["assigned_feedback"]
 collection_assigned_feedback_with_tore = dbIssues["assigned_feedback_with_tore"]

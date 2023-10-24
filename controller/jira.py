@@ -5,7 +5,7 @@ from pymongo import MongoClient
 
 jira_issue_bp = Blueprint('jira_issue', __name__)
 
-client = MongoClient("mongodb://localhost:27017/")
+client = MongoClient("mongodb://mongo:27017/")
 dbIssues = client["jira_dashboard"]
 collection_jira_issues = dbIssues["jira_issue"]
 collection_assigned_feedback = dbIssues["assigned_feedback"]

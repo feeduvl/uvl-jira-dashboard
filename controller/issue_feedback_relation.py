@@ -9,9 +9,8 @@ nlp = spacy.load("en_core_web_sm")
 
 issue_feedback_relation_bp = Blueprint('issue_feedback_relation', __name__)
 
-client = MongoClient("mongodb://localhost:27017/")
+client = MongoClient("mongodb://mongo:27017/")
 dbIssues = client["jira_dashboard"]
-dbFeedback = client["concepts_data"]
 collection_jira_issues = dbIssues["jira_issue"]
 collection_imported_feedback = dbIssues["imported_feedback"]
 collection_assigned_feedback = dbIssues["assigned_feedback"]
