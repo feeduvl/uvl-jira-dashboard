@@ -251,7 +251,7 @@ def get_all_jira_issues_from_db():
         return jsonify({"error": "Internal Server Error"}), 500
 
 
-@jira_issue_bp.route("/issues_to_assign", methods=["PUT"])
+@jira_issue_bp.route("/issues_to_assign", methods=["POST"])
 def activate_projects():
     data = request.get_json()
     selected_projects = data.get('selectedProjects')
