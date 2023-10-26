@@ -53,18 +53,21 @@ def delete_project(project_name):
 @jira_issue_bp.route('/delete_issue/<project_name>/<key>', methods=['DELETE'])
 def delete_issue(project_name, key):
     collection_assigned_feedback.delete_many({'issue_key': key})
-
     collection_assigned_feedback_with_tore.delete_many({'issue_key': key})
 
     projects = collection_jira_issues.find({'projectName': project_name})
+
     for project in projects:
         issues = project.get('issues', [])
-        updated_issues = [issue for issue in issues if issue['key'] != key]
-        collection_jira_issues.update_one({'_id': project['_id']}, {'$set': {'issues': updated_issues}})
 
-    return jsonify({
-        'message': 'Elemente erfolgreich gelöscht'
-    })
+        updated_issues = [issue for issue in issues if issue['key'] != key]
+
+        if not updated_issues:
+            collection_jira_issues.delete_one({'_id': project['_id']})
+        else:
+            collection_jira_issues.update_one({'_id': project['_id']}, {'$set': {'issues': updated_issues}})
+
+    return jsonify({'message': 'Deleted element'})
 
 
 @jira_issue_bp.route('/get_assigned_issues/<feedback_id>', methods=['GET'])
@@ -248,7 +251,7 @@ def get_all_jira_issues_from_db():
         return jsonify({"error": "Internal Server Error"}), 500
 
 
-@jira_issue_bp.route("/issues_to_assign", methods=["POST"])
+@jira_issue_bp.route("/issues_to_assign", methods=["PUT"])
 def activate_projects():
     data = request.get_json()
     selected_projects = data.get('selectedProjects')
