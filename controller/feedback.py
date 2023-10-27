@@ -214,3 +214,9 @@ def delete_feedback(feedback_id):
     collection_imported_feedback.delete_many({'id': feedback_id})
     return jsonify({'error': 'Feedback deleted'})
 
+
+@feedback_bp.route('/delete_all_feedback', methods=['DELETE'])
+def delete_all_feedback():
+    collection_imported_feedback.delete_many({})
+    return jsonify({'error': 'Feedback deleted'})
+

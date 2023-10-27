@@ -327,7 +327,7 @@ def load_issues_from_project(project_name):
         for i in range(total_issues):
             issue_key = response_json["issues"][i]["key"]
             description = response_json["issues"][i]["fields"]["description"]
-            extracted_text = re.sub(r'\{[^}]+\}', '', description)
+            extracted_text = re.sub(r'\\{[^}]+\\}', '', description)
             issue_type = response_json["issues"][i]["fields"]["issuetype"]["name"]
             project_name = response_json["issues"][i]["fields"]["project"]["name"]
             summary = response_json["issues"][i]["fields"]["summary"]
