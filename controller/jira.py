@@ -2,6 +2,7 @@ import os
 import requests
 from flask import Blueprint, request, jsonify
 from pymongo import MongoClient
+import re
 
 jira_issue_bp = Blueprint('jira_issue', __name__)
 
@@ -326,10 +327,11 @@ def load_issues_from_project(project_name):
         for i in range(total_issues):
             issue_key = response_json["issues"][i]["key"]
             description = response_json["issues"][i]["fields"]["description"]
+            extracted_text = re.sub(r'\{[^}]+\}', '', description)
             issue_type = response_json["issues"][i]["fields"]["issuetype"]["name"]
             project_name = response_json["issues"][i]["fields"]["project"]["name"]
             summary = response_json["issues"][i]["fields"]["summary"]
-            issue = {"key": issue_key, "description": description, "issueType": issue_type, "projectName": project_name, "summary": summary}
+            issue = {"key": issue_key, "description": extracted_text, "issueType": issue_type, "projectName": project_name, "summary": summary}
             list.append(issue)
 
     return jsonify(list)
