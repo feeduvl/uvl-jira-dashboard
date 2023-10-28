@@ -189,26 +189,6 @@ def assign_feedback_to_issues():
                     }
                     collection_assigned_feedback.insert_one(assigned_feedback)
 
-                        # assigned_issue = {
-                        #     "key": issue["key"],
-                        #     "issueType": issue["issueType"],
-                        #     "projectName": issue["projectName"],
-                        #     "summary": issue["summary"],
-                        #     "description": issue["description"]
-                        # }
-                        # feedback_with_similarity['assigned_issues'].append(assigned_issue)
-                #         similar_feedbacks.append(feedback_with_similarity)
-                #
-                # issue["assigned_feedback"] = similar_feedbacks
-                #
-                # if similar_feedbacks:
-                #     collectionJiraIssues.update_one(
-                #         {"projectName": project.get('projectName')},
-                #         {"$set": {"issues": project_issues}}
-                #     )
-                #
-                # results.append({"summary": summary, "description": description, "similar_feedbacks": similar_feedbacks})
-
     return jsonify({'message': 'Feedbacks erfolgreich Issues zugewiesen'})
 
 
@@ -246,46 +226,6 @@ def assign_feedback_to_issues_by_tore():
                                 "similarity": float(similarity),
                             }
                             collection_assigned_feedback_with_tore.insert_one(assigned_feedback_with_tore)
-
-                #             feedback_with_similarity = {
-                #                 'id': feedback.get('id'),
-                #                 "text": feedback_text,
-                #                 "similarity": float(similarity),
-                #                 "assigned_issues_with_tore": []
-                #             }
-                #             if similarity > 0.7:
-                #                 assigned_issue = {
-                #                     "key": issue["key"],
-                #                     "issueType": issue["issueType"],
-                #                     "projectName": issue["projectName"],
-                #                     "summary": issue["summary"],
-                #                     "description": issue["description"]
-                #                 }
-                #                 feedback_with_similarity['assigned_issues_with_tore'].append(assigned_issue)
-                #                 similar_feedbacks.append(feedback_with_similarity)
-                # issue["assigned_feedback_with_tore"] = similar_feedbacks
-                # if similar_feedbacks:
-                #     collectionJiraIssues.update_one(
-                #         {"projectName": project.get('projectName')},
-                #         {"$set": {"issues": project_issues}}
-                #     )
-                #     for feedback in similar_feedbacks:
-                #         feedback_id = feedback['id']
-                #
-                #         feedback_doc = collectionFeedbackWithToreCategories.find_one({'id': feedback_id})
-                #         if feedback_doc:
-                #             if 'assigned_issues_with_tore' in feedback_doc:
-                #                 issue_key_to_add = issue.get('key')
-                #                 if issue_key_to_add not in [assigned_issue.get('key') for assigned_issue in
-                #                                             feedback_doc['assigned_issues_with_tore']]:
-                #                     feedback_doc['assigned_issues_with_tore'].append(issue)
-                #             else:
-                #                 feedback_doc['assigned_issues_with_tore'] = [issue]
-                #
-                #             collectionFeedbackWithToreCategories.update_one(
-                #                 {'id': feedback_id},
-                #                 {"$set": {"assigned_issues_with_tore": feedback_doc['assigned_issues_with_tore']}}
-                #             )
 
     return jsonify({'message': 'the assignment was successful'})
 

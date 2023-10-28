@@ -1,4 +1,4 @@
-from flask import jsonify, Blueprint
+from flask import jsonify, Blueprint, request
 from pymongo import MongoClient
 
 feedback_bp = Blueprint('feedback', __name__)
@@ -89,6 +89,8 @@ def set_issue_type_by_tore_category(tore_list):
 def load_feedback(feedback_name):
     try:
         if collection_imported_feedback.count_documents({}) > 0:
+            collection_assigned_feedback_with_tore.delete_many({})
+            collection_assigned_feedback.delete_many({})
             collection_imported_feedback.delete_many({})
 
         feedback_collection = collection_feedback.find({})
@@ -114,22 +116,51 @@ def load_feedback(feedback_name):
     except Exception as e:
         return jsonify({"message": str(e)})
 
-#add pagination
+
 @feedback_bp.route('/get_feedback', methods=['GET'])
 def get_feedback():
-    issues = list(collection_imported_feedback.find({}))
-    for element in issues:
-        element["_id"] = str(element["_id"])
-    return issues
+    try:
+        page = int(request.args.get("page", default=1))
+        size = int(request.args.get("size", default=-1))
 
-#add pagination
+        if size == -1:
+            size = collection_imported_feedback.count_documents({})
+
+        skip = (page - 1) * size
+        cursor = collection_imported_feedback.find().skip(skip).limit(size)
+
+        feedback_list = list(cursor)
+        for feedback in feedback_list:
+            feedback["_id"] = str(feedback["_id"])
+        if feedback_list:
+            total_items = collection_imported_feedback.count_documents({})
+            total_pages = (total_items + size - 1) // size
+            res = {
+                "feedback": feedback_list,
+                "currentPage": page,
+                "totalItems": total_items,
+                "totalPages": total_pages
+            }
+        else:
+            res = {
+                "feedback": feedback_list,
+                "currentPage": page,
+                "totalItems": 0,
+                "totalPages": 0
+            }
+
+        return jsonify(res), 200
+    except Exception as e:
+        return jsonify({"error": "Internal Server Error"}), 500
+
+
 @feedback_bp.route('/get_feedback_names', methods=['GET'])
 def get_feedback_names():
     feedback = collection_feedback.find({})
     names_list = [doc["name"] for doc in feedback]
     return names_list
 
-#add pagination
+
 @feedback_bp.route('/get_annotations_names', methods=['GET'])
 def get_annotations_names():
     annotations = collection_annotations.find({})
@@ -139,62 +170,91 @@ def get_annotations_names():
 
 @feedback_bp.route('/get_assigned_feedback/<issue_key>', methods=['GET'])
 def get_assigned_feedback(issue_key):
-    assigned_feedback = list(collection_assigned_feedback.find({'issue_key': issue_key}))
+    try:
+        page = int(request.args.get("page", default=1))
+        size = int(request.args.get("size", default=-1))
 
-    feedback_ids = [feedback['feedback_id'] for feedback in assigned_feedback]
+        assigned_feedback = list(collection_assigned_feedback.find({'issue_key': issue_key}))
+        feedback_ids = [feedback['feedback_id'] for feedback in assigned_feedback]
 
-    feedbacks = []
-    for feedback_id in feedback_ids:
-        feedback = collection_imported_feedback.find_one({'id': feedback_id})
-        if feedback:
-            matching_assigned_feedback = next((af for af in assigned_feedback if af['feedback_id'] == feedback_id),
-                                              None)
+        if size == -1:
+            size = len(feedback_ids)
 
-            if matching_assigned_feedback:
-                similarity = matching_assigned_feedback.get('similarity')
-                feedback_with_similarity = {
-                    'id': feedback_id,
-                    'text': feedback.get('text'),
-                    'similarity': similarity
-                }
-                feedbacks.append(feedback_with_similarity)
+        start_index = (page - 1) * size
+        end_index = min(start_index + size, len(feedback_ids))
 
-    return jsonify(feedbacks)
+        feedbacks = []
+        for feedback_id in feedback_ids[start_index:end_index]:
+            feedback = collection_imported_feedback.find_one({'id': feedback_id})
+            if feedback:
+                matching_assigned_feedback = next((af for af in assigned_feedback if af['feedback_id'] == feedback_id), None)
+                if matching_assigned_feedback:
+                    similarity = matching_assigned_feedback.get('similarity')
+                    feedback_with_similarity = {
+                        'id': feedback_id,
+                        'text': feedback.get('text'),
+                        'similarity': similarity
+                    }
+                    feedbacks.append(feedback_with_similarity)
+
+        total_items = len(feedback_ids)
+        total_pages = (total_items + size - 1) // size
+
+        response = {
+            "feedback": feedbacks,
+            "currentPage": page,
+            "totalItems": total_items,
+            "totalPages": total_pages
+        }
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({"error": "Internal Server Error"}), 500
+
 
 
 @feedback_bp.route('/get_assigned_tore_feedback/<issue_key>', methods=['GET'])
 def get_assigned_tore_feedback(issue_key):
-    assigned_feedback = list(collection_assigned_feedback_with_tore.find({'issue_key': issue_key}))
+    try:
+        page = int(request.args.get("page", default=1))
+        size = int(request.args.get("size", default=-1))
 
-    feedback_ids = [feedback['feedback_id'] for feedback in assigned_feedback]
+        assigned_feedback = list(collection_assigned_feedback_with_tore.find({'issue_key': issue_key}))
+        feedback_ids = [feedback['feedback_id'] for feedback in assigned_feedback]
 
-    feedbacks = []
-    for feedback_id in feedback_ids:
-        feedback = collection_imported_feedback.find_one({'id': feedback_id})
-        if feedback:
-            matching_assigned_feedback = next((af for af in assigned_feedback if af['feedback_id'] == feedback_id),
-                                              None)
+        if size == -1:
+            size = len(feedback_ids)
 
-            if matching_assigned_feedback:
-                similarity = matching_assigned_feedback.get('similarity')
-                feedback_with_similarity = {
-                    'id': feedback_id,
-                    'text': feedback.get('text'),
-                    'similarity': similarity
-                }
-                feedbacks.append(feedback_with_similarity)
+        start_index = (page - 1) * size
+        end_index = min(start_index + size, len(feedback_ids))
 
-    return jsonify(feedbacks)
+        feedbacks = []
+        for feedback_id in feedback_ids[start_index:end_index]:
+            feedback = collection_imported_feedback.find_one({'id': feedback_id})
+            if feedback:
+                matching_assigned_feedback = next((af for af in assigned_feedback if af['feedback_id'] == feedback_id),
+                                                  None)
+                if matching_assigned_feedback:
+                    similarity = matching_assigned_feedback.get('similarity')
+                    feedback_with_similarity = {
+                        'id': feedback_id,
+                        'text': feedback.get('text'),
+                        'similarity': similarity
+                    }
+                    feedbacks.append(feedback_with_similarity)
+        total_items = len(feedback_ids)
+        total_pages = (total_items + size - 1) // size
 
-
-@feedback_bp.route('/get_unassigned_feedback/<issue_key>', methods=['GET'])
-def get_unassigned_feedback(issue_key):
-    assigned_feedback_ids = set(item['feedback_id'] for item in collection_assigned_feedback.find({'issue_key': issue_key}, {'feedback_id': 1}))
-    unassigned_feedback = list(collection_imported_feedback.find({'id': {'$nin': list(assigned_feedback_ids)}}))
-    for feedback in unassigned_feedback:
-        feedback['_id'] = str(feedback['_id'])
-
-    return jsonify(unassigned_feedback)
+        response = {
+            "feedback": feedbacks,
+            "currentPage": page,
+            "totalItems": total_items,
+            "totalPages": total_pages
+        }
+        return jsonify(response), 200
+    except Exception as e:
+        return jsonify({"error": "Internal Server Error"}), 500
 
 
 @feedback_bp.route('/get_unassigned_tore_feedback/<issue_key>', methods=['GET'])
@@ -204,7 +264,58 @@ def get_unassigned_tore_feedback(issue_key):
     for feedback in unassigned_feedback:
         feedback['_id'] = str(feedback['_id'])
 
-    return jsonify(unassigned_feedback)
+    page = int(request.args.get('page', default=1))
+    size = int(request.args.get('size', default=-1))
+
+    if size == -1:
+        size = len(unassigned_feedback)
+
+    start_index = (page - 1) * size
+    end_index = min(start_index + size, len(unassigned_feedback))
+
+    paginated_unassigned_feedback = unassigned_feedback[start_index:end_index]
+
+    total_items = len(unassigned_feedback)
+    total_pages = (total_items + size - 1) // size
+
+    response = {
+        "feedback": paginated_unassigned_feedback,
+        "currentPage": page,
+        "totalItems": total_items,
+        "totalPages": total_pages
+    }
+
+    return jsonify(response)
+
+
+@feedback_bp.route('/get_unassigned_feedback/<issue_key>', methods=['GET'])
+def get_unassigned_feedback(issue_key):
+    assigned_feedback_ids = set(item['feedback_id'] for item in collection_assigned_feedback.find({'issue_key': issue_key}, {'feedback_id': 1}))
+    unassigned_feedback = list(collection_imported_feedback.find({'id': {'$nin': list(assigned_feedback_ids)}}))
+    for feedback in unassigned_feedback:
+        feedback['_id'] = str(feedback['_id'])
+
+    page = int(request.args.get('page', default=1))
+    size = int(request.args.get('size', default=-1))
+    if size == -1:
+        size = len(unassigned_feedback)
+
+    start_index = (page - 1) * size
+    end_index = min(start_index + size, len(unassigned_feedback))
+
+    paginated_unassigned_feedback = unassigned_feedback[start_index:end_index]
+
+    total_items = len(unassigned_feedback)
+    total_pages = (total_items + size - 1) // size
+
+    response = {
+        "feedback": paginated_unassigned_feedback,
+        "currentPage": page,
+        "totalItems": total_items,
+        "totalPages": total_pages
+    }
+
+    return jsonify(response)
 
 
 @feedback_bp.route('/delete_feedback/<feedback_id>', methods=['DELETE'])
@@ -217,6 +328,8 @@ def delete_feedback(feedback_id):
 
 @feedback_bp.route('/delete_all_feedback', methods=['DELETE'])
 def delete_all_feedback():
+    collection_assigned_feedback.delete_many({})
+    collection_assigned_feedback_with_tore.delete_many({})
     collection_imported_feedback.delete_many({})
     return jsonify({'error': 'Feedback deleted'})
 
