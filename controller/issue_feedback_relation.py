@@ -113,17 +113,39 @@ def add_issue_to_tore_feedback():
 
 
 @issue_feedback_relation_bp.route('/delete_feedback/<issue_key>/<feedback_id>', methods=['DELETE'])
-def delete_feedback_form_issue(issue_key, feedback_id):
+def delete_feedback_from_issue(issue_key, feedback_id):
     collection_assigned_feedback.delete_one({'issue_key': issue_key, 'feedback_id': feedback_id})
-
     return jsonify({"message": "Feedback deleted successfully"})
 
 
 @issue_feedback_relation_bp.route('/delete_tore_feedback/<issue_key>/<feedback_id>', methods=['DELETE'])
-def delete_tore_feedback_form_issue(issue_key, feedback_id):
+def delete_tore_feedback_from_issue(issue_key, feedback_id):
     collection_assigned_feedback_with_tore.delete_one({'issue_key': issue_key, 'feedback_id': feedback_id})
-
     return jsonify({"message": "Feedback deleted successfully"})
+
+
+@issue_feedback_relation_bp.route('/delete_assigned_feedback_for_issue/<issue_key>', methods=['DELETE'])
+def delete_assigned_feedback_for_issue(issue_key):
+    collection_assigned_feedback.delete_many({'issue_key': issue_key})
+    return jsonify({'error': 'Feedback deleted'})
+
+
+@issue_feedback_relation_bp.route('/delete_tore_assigned_feedback_for_issue/<issue_key>', methods=['DELETE'])
+def delete_tore_assigned_feedback_for_issue(issue_key):
+    collection_assigned_feedback_with_tore.delete_many({'issue_key': issue_key})
+    return jsonify({'error': 'Feedback deleted'})
+
+
+@issue_feedback_relation_bp.route('/delete_assigned_issues_for_feedback/<feedback_id>', methods=['DELETE'])
+def delete_assigned_issues_for_feedback(feedback_id):
+    collection_assigned_feedback.delete_many({'feedback_id': feedback_id})
+    return jsonify({'error': 'Feedback deleted'})
+
+
+@issue_feedback_relation_bp.route('/delete_tore_assigned_issues_for_feedback/<feedback_id>', methods=['DELETE'])
+def delete_tore_assigned_issues_for_feedback(feedback_id):
+    collection_assigned_feedback_with_tore.delete_many({'feedback_id': feedback_id})
+    return jsonify({'error': 'Feedback deleted'})
 
 
 def get_embeddings(text):
