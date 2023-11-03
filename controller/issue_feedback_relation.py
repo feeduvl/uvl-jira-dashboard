@@ -20,6 +20,44 @@ tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
 model = DistilBertModel.from_pretrained('distilbert-base-uncased')
 
 
+@issue_feedback_relation_bp.route('/get_data_to_export', methods=['GET'])
+def get_data_to_export():
+    imported_feedback = list(collection_imported_feedback.find({}))
+    assigned_objects = list(collection_assigned_feedback.find({}))
+    sorted_assigned_objects = sorted(assigned_objects, key=lambda x: x['feedback_id'])
+    jira_issues = list(collection_jira_issues.find({}))
+
+    result = []
+    feedback_id = None
+    feedback_text = None
+    issue_key = None
+    issue_summary = None
+    issue_description = None
+    for assigned_object in sorted_assigned_objects:
+        for feedback in imported_feedback:
+            if assigned_object['feedback_id'] == feedback['id']:
+                feedback_id = feedback['id']
+                feedback_text = feedback['text']
+                break
+        for project in jira_issues:
+            for issue in project['issues']:
+                if issue['key'] == assigned_object['issue_key']:
+                    issue_key = issue['key']
+                    issue_summary = issue['summary']
+                    issue_description = issue['description']
+                    break
+        feedback_data = {
+            'feedback_id': feedback_id,
+            'feedback_text': feedback_text,
+            'issue_key': issue_key,
+            'issue_summary': issue_summary,
+            'issue_description': issue_description
+        }
+        result.append(feedback_data)
+
+    return jsonify(result)
+
+
 @issue_feedback_relation_bp.route('/add_feedback_to_issue', methods=['POST'])
 def add_feedback_to_issue():
     data = request.get_json()
@@ -194,10 +232,10 @@ def assign_feedback_to_issues():
                 description = issue.get("description")
                 issue_text = summary
                 if description is not None:
-                    issue_text = summary + " " + description
+                    issue_text = summary + ". " + description
                 summary_embedding = get_embeddings(issue_text)
                 for feedback in feedback_collection:
-                    feedback_text = feedback.get("text")
+                    feedback_text = feedback.get("text") # regex mit hashtag und rating
                     text_embedding = get_embeddings(feedback_text)
 
                     similarity = cosine_similarity([summary_embedding], [text_embedding])[0][0]
@@ -207,7 +245,7 @@ def assign_feedback_to_issues():
                             'feedback_id': feedback.get('id'),
                             "issue_key": issue["key"],
                             "project_name": issue["projectName"],
-                            "similarity": float(similarity),
+                            "similarity": float(round(similarity, 3)),
                     }
                     collection_assigned_feedback.insert_one(assigned_feedback)
 
@@ -229,7 +267,7 @@ def assign_feedback_to_issues_by_tore():
                 description = issue.get("description")
                 issue_text = summary
                 if description is not None:
-                    issue_text = summary + " " + description
+                    issue_text = summary + ". " + description
                 summary_embedding = get_embeddings(issue_text)
                 for feedback in feedback_collection:
                     assigned_tore = feedback.get('tore', [])

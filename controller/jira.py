@@ -136,6 +136,7 @@ def get_assigned_issues(feedback_id):
                     related_issue = {
                         'key': issue['key'],
                         'summary': issue['summary'],
+                        'description': issue['description'],
                         'similarity': similarity
                     }
 
@@ -186,6 +187,7 @@ def get_tore_assigned_issues(feedback_id):
                     related_issue = {
                         'key': issue['key'],
                         'summary': issue['summary'],
+                        'description': issue['description'],
                         'similarity': similarity
                     }
 
@@ -379,6 +381,7 @@ def load_issues_from_project(project_name):
                 description = str(description)
             extracted_text = re.sub(r'\{[^}]*}', '', description)
             extracted_text = re.sub(r'\*|\|', '', extracted_text)
+            extracted_text = re.sub(r'\r\n|\r|\n', ' ', extracted_text)
             issue_type = response_json["issues"][i]["fields"]["issuetype"]["name"]
             project_name = response_json["issues"][i]["fields"]["project"]["name"]
             summary = response_json["issues"][i]["fields"]["summary"]
