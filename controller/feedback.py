@@ -164,9 +164,9 @@ def get_feedback_names():
     return names_list
 
 
-@feedback_bp.route('/get_annotations_names/<selectedFeedbackFilename>', methods=['GET'])
-def get_annotations_names(selectedFeedbackFilename):
-    annotations = collection_annotations.find({"dataset": selectedFeedbackFilename})
+@feedback_bp.route('/get_annotations_names/<selectedFeedbackFileName>', methods=['GET'])
+def get_annotations_names(selectedFeedbackFileName):
+    annotations = collection_annotations.find({"dataset": selectedFeedbackFileName})
     names_list = [doc["name"] for doc in annotations]
     return names_list
 

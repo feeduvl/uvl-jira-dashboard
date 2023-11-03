@@ -58,6 +58,44 @@ def get_data_to_export():
     return jsonify(result)
 
 
+@issue_feedback_relation_bp.route('/get_data_tore_to_export', methods=['GET'])
+def get_data_tore_to_export():
+    imported_feedback = list(collection_imported_feedback.find({}))
+    assigned_objects = list(collection_assigned_feedback_with_tore.find({}))
+    sorted_assigned_objects = sorted(assigned_objects, key=lambda x: x['feedback_id'])
+    jira_issues = list(collection_jira_issues.find({}))
+
+    result = []
+    feedback_id = None
+    feedback_text = None
+    issue_key = None
+    issue_summary = None
+    issue_description = None
+    for assigned_object in sorted_assigned_objects:
+        for feedback in imported_feedback:
+            if assigned_object['feedback_id'] == feedback['id']:
+                feedback_id = feedback['id']
+                feedback_text = feedback['text']
+                break
+        for project in jira_issues:
+            for issue in project['issues']:
+                if issue['key'] == assigned_object['issue_key']:
+                    issue_key = issue['key']
+                    issue_summary = issue['summary']
+                    issue_description = issue['description']
+                    break
+        feedback_data = {
+            'feedback_id': feedback_id,
+            'feedback_text': feedback_text,
+            'issue_key': issue_key,
+            'issue_summary': issue_summary,
+            'issue_description': issue_description
+        }
+        result.append(feedback_data)
+
+    return jsonify(result)
+
+
 @issue_feedback_relation_bp.route('/add_feedback_to_issue', methods=['POST'])
 def add_feedback_to_issue():
     data = request.get_json()
