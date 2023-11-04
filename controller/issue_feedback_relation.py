@@ -226,30 +226,43 @@ def delete_tore_assigned_issues_for_feedback(feedback_id):
 
 def get_embeddings(text):
     doc = nlp(text)
+    # darf ein wort nur einmal gefunden werden?
     nouns_and_verbs = [token.text for token in doc if token.pos_ in ("NOUN", "VERB")]
-
+    #tokenize text - konvertiert text in Abfolge von Tokens mit position in form von pytorch tensor
     tokens = tokenizer(text, return_tensors="pt")
+    # das keine gradienten (Backpropagation verwendet wird)
     with torch.no_grad():
+        #tokens in einzelne Komponenten entpacken
         outputs = model(**tokens)
+    #durchschnittliches embedding für text + dim1=durchschnittswert für jeden token + squeeze entfernt überflüssige dim + numypy-array bildung
     embedding = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
 
     embeddings = []
 
     if nouns_and_verbs:
         for word in nouns_and_verbs:
-            # tokenize word
+            # tokenize word from nouns_and_verbs
             word_tokens = tokenizer.tokenize(word)
 
-            # convert token-sequenz to String
+            # convert token-sequenz to String gesamter Text
             tokenized_text = tokenizer.convert_ids_to_tokens(tokens["input_ids"][0])
 
             # search for word in tokenized String
+            # iteriert durch tokenized text. -len verhindert out of bounce
             for i in range(len(tokenized_text) - len(word_tokens) + 1):
+                # ist word_token in sequenz von tokenized_text die bei i beginnt und so land wie word_tokens ist
                 if tokenized_text[i:i + len(word_tokens)] == word_tokens:
+                    # [0, i:i + len(word_tokens), :] 0= erster Satz im text. rest wählt die tokens aus, die zum word_token gehören
+                    # .mean(dim1) berechnet word embedding für aktueller wort = durchschnittswert über token des aktuellen wortes wird gebildet
+                    # dim0 = durcshnitt des gesamten Satz ohne Kontext und sematische Bedeutung der einzelnen Wörter
                     word_embedding = outputs.last_hidden_state[0, i:i + len(word_tokens), :].mean(dim=0).numpy()
                     embeddings.append(word_embedding)
+                    #Wenn der Satzkontext stärker berücksichtigt werden soll, ist dim=1 die bessere Wahl.
+                    # Wenn jedoch nur die semantische Bedeutung der Nomen und Verben
+                        # in Bezug auf den gesamten Text betrachtet werden soll, dim0
     # Creating an overall embedding for the set by averaging the embeddings
     if embeddings:
+        # nötig für spezifische informationen über wörter im text
         summary_embedding = sum(embeddings) / len(embeddings)
         return summary_embedding
     else:
