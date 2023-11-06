@@ -226,8 +226,9 @@ def delete_tore_assigned_issues_for_feedback(feedback_id):
 
 def get_embeddings(text):
     doc = nlp(text)
-    # darf ein wort nur einmal gefunden werden?
-    nouns_and_verbs = [token.text for token in doc if token.pos_ in ("NOUN", "VERB")]
+    # jedes wort nur einmal in array, weil es trotzdem jede stelle findet
+    nouns_and_verbs = set(token.text for token in doc if token.pos_ in ("NOUN", "VERB"))
+    nouns_and_verbs = list(nouns_and_verbs)
     #tokenize text - konvertiert text in Abfolge von Tokens mit position in form von pytorch tensor
     tokens = tokenizer(text, return_tensors="pt")
     # das keine gradienten (Backpropagation verwendet wird)
