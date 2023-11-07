@@ -20,80 +20,108 @@ tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
 model = DistilBertModel.from_pretrained('distilbert-base-uncased')
 
 
-@issue_feedback_relation_bp.route('/get_data_to_export', methods=['GET'])
-def get_data_to_export():
-    imported_feedback = list(collection_imported_feedback.find({}))
-    assigned_objects = list(collection_assigned_feedback.find({}))
-    sorted_assigned_objects = sorted(assigned_objects, key=lambda x: x['feedback_id'])
-    jira_issues = list(collection_jira_issues.find({}))
+@issue_feedback_relation_bp.route('/get_data_to_export/<feedback_name>', methods=['GET'])
+def get_data_to_export(feedback_name):
+    feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
+    imported_feedback = feedback_document.get("feedback", [])
 
-    result = []
-    feedback_id = None
-    feedback_text = None
-    issue_key = None
-    issue_summary = None
-    issue_description = None
-    for assigned_object in sorted_assigned_objects:
-        for feedback in imported_feedback:
-            if assigned_object['feedback_id'] == feedback['id']:
-                feedback_id = feedback['id']
-                feedback_text = feedback['text']
-                break
-        for project in jira_issues:
-            for issue in project['issues']:
-                if issue['key'] == assigned_object['issue_key']:
-                    issue_key = issue['key']
+    assigned_feedback_documents = collection_assigned_feedback.find({})
+
+    unique_issue_keys_with_feedback_ids = {}
+    for document in assigned_feedback_documents:
+        issue_key = document['issue_key']
+        feedback_id = document['feedback_id']
+        if issue_key not in unique_issue_keys_with_feedback_ids:
+            unique_issue_keys_with_feedback_ids[issue_key] = []
+        unique_issue_keys_with_feedback_ids[issue_key].append(feedback_id)
+
+    issue_info = {}
+    for issue_key in unique_issue_keys_with_feedback_ids:
+        issue_data = collection_jira_issues.find_one({'issues.key': issue_key})
+        if issue_data:
+            issue_summary = None
+            issue_description = None
+            for issue in issue_data.get('issues', []):
+                if issue['key'] == issue_key:
                     issue_summary = issue['summary']
                     issue_description = issue['description']
                     break
-        feedback_data = {
-            'feedback_id': feedback_id,
-            'feedback_text': feedback_text,
-            'issue_key': issue_key,
-            'issue_summary': issue_summary,
-            'issue_description': issue_description
-        }
-        result.append(feedback_data)
+            if issue_summary is not None and issue_description is not None:
+                issue_info[issue_key] = {
+                    'issue_key': issue_key,
+                    'issue_summary': issue_summary,
+                    'issue_description': issue_description,
+                    'feedback_data': []
+                }
+    feedback_info = {}
+    for document in imported_feedback:
+        feedback_id = document['id']
+        feedback_text = document['text']
+        feedback_info[feedback_id] = feedback_text
 
-    return jsonify(result)
+    for issue_key, feedback_ids in unique_issue_keys_with_feedback_ids.items():
+        if issue_key in issue_info:
+            feedback_data = issue_info[issue_key]['feedback_data']
+            for feedback_id in feedback_ids:
+                if feedback_id in feedback_info:
+                    feedback_text = feedback_info[feedback_id]
+                    feedback_data.append({'feedback_id': feedback_id, 'feedback_text': feedback_text})
+
+    combined_data = list(issue_info.values())
+
+    return jsonify(combined_data)
 
 
-@issue_feedback_relation_bp.route('/get_data_tore_to_export', methods=['GET'])
-def get_data_tore_to_export():
-    imported_feedback = list(collection_imported_feedback.find({}))
-    assigned_objects = list(collection_assigned_feedback_with_tore.find({}))
-    sorted_assigned_objects = sorted(assigned_objects, key=lambda x: x['feedback_id'])
-    jira_issues = list(collection_jira_issues.find({}))
+@issue_feedback_relation_bp.route('/get_data_tore_to_export/<feedback_name>', methods=['GET'])
+def get_data_tore_to_export(feedback_name):
+    feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
+    imported_feedback = feedback_document.get("feedback", [])
 
-    result = []
-    feedback_id = None
-    feedback_text = None
-    issue_key = None
-    issue_summary = None
-    issue_description = None
-    for assigned_object in sorted_assigned_objects:
-        for feedback in imported_feedback:
-            if assigned_object['feedback_id'] == feedback['id']:
-                feedback_id = feedback['id']
-                feedback_text = feedback['text']
-                break
-        for project in jira_issues:
-            for issue in project['issues']:
-                if issue['key'] == assigned_object['issue_key']:
-                    issue_key = issue['key']
+    assigned_feedback_documents = collection_assigned_feedback_with_tore.find({})
+
+    unique_issue_keys_with_feedback_ids = {}
+    for document in assigned_feedback_documents:
+        issue_key = document['issue_key']
+        feedback_id = document['feedback_id']
+        if issue_key not in unique_issue_keys_with_feedback_ids:
+            unique_issue_keys_with_feedback_ids[issue_key] = []
+        unique_issue_keys_with_feedback_ids[issue_key].append(feedback_id)
+
+    issue_info = {}
+    for issue_key in unique_issue_keys_with_feedback_ids:
+        issue_data = collection_jira_issues.find_one({'issues.key': issue_key})
+        if issue_data:
+            issue_summary = None
+            issue_description = None
+            for issue in issue_data.get('issues', []):
+                if issue['key'] == issue_key:
                     issue_summary = issue['summary']
                     issue_description = issue['description']
                     break
-        feedback_data = {
-            'feedback_id': feedback_id,
-            'feedback_text': feedback_text,
-            'issue_key': issue_key,
-            'issue_summary': issue_summary,
-            'issue_description': issue_description
-        }
-        result.append(feedback_data)
+            if issue_summary is not None and issue_description is not None:
+                issue_info[issue_key] = {
+                    'issue_key': issue_key,
+                    'issue_summary': issue_summary,
+                    'issue_description': issue_description,
+                    'feedback_data': []
+                }
+    feedback_info = {}
+    for document in imported_feedback:
+        feedback_id = document['id']
+        feedback_text = document['text']
+        feedback_info[feedback_id] = feedback_text
 
-    return jsonify(result)
+    for issue_key, feedback_ids in unique_issue_keys_with_feedback_ids.items():
+        if issue_key in issue_info:
+            feedback_data = issue_info[issue_key]['feedback_data']
+            for feedback_id in feedback_ids:
+                if feedback_id in feedback_info:
+                    feedback_text = feedback_info[feedback_id]
+                    feedback_data.append({'feedback_id': feedback_id, 'feedback_text': feedback_text})
+
+    combined_data = list(issue_info.values())
+
+    return jsonify(combined_data)
 
 
 @issue_feedback_relation_bp.route('/add_feedback_to_issue', methods=['POST'])
