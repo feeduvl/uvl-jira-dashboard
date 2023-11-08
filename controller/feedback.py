@@ -100,8 +100,10 @@ def load_feedback(feedback_name):
                     for doc in documents:
                         doc_id = doc.get('id')
                         doc_text = doc.get('text')
-                        filtered_text = re.sub(r'^\d+\s+#{3}|#{3}$', '', doc_text)
-                        filtered_text = re.sub(r'\r\n|\r|\n', ' ', filtered_text)
+                        filtered_text = re.sub(r'^\d+\s*', '', doc_text)
+                        filtered_text = re.sub(r'[^a-zA-Z0-9\s.,()]', '', filtered_text)
+                        filtered_text = re.sub(r'\s+', ' ', filtered_text).strip()
+                        filtered_text = filtered_text.replace('\n', '').replace('\r', '')
 
                         id_and_text = {
                             'id': doc_id,
