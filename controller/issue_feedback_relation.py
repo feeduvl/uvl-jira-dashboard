@@ -302,9 +302,8 @@ def get_embeddings(text):
 def assign_feedback_to_issues(feedback_name, max_similarity_value):
     max_similarity_value = float(max_similarity_value)
     collection_assigned_feedback.delete_many({})
-    feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
-    feedback_array = feedback_document.get("feedback", [])
     jira_collection = collection_jira_issues.find({})
+    feedback_embeddings = calculate_feedback_embedding(feedback_name)
     for project in jira_collection:
         is_selected = project.get("selectedToAssign")
         if is_selected:
@@ -315,23 +314,36 @@ def assign_feedback_to_issues(feedback_name, max_similarity_value):
                 issue_text = summary
                 if description is not None:
                     issue_text = summary + ". " + description
-                summary_embedding = get_embeddings(issue_text)
-                for feedback in feedback_array:
-                    feedback_text = feedback.get("text")
-                    text_embedding = get_embeddings(feedback_text)
 
-                    similarity = cosine_similarity([summary_embedding], [text_embedding])[0][0]
+                summary_embedding = get_embeddings(issue_text)
+                for embedded_feedback in feedback_embeddings:
+                    similarity = cosine_similarity([summary_embedding], [embedded_feedback.get('embedding')])[0][0]
 
                     if similarity > max_similarity_value:
                         assigned_feedback = {
-                                'feedback_id': feedback.get('id'),
+                                'feedback_id': embedded_feedback.get('feedback_id'),
                                 "issue_key": issue["key"],
                                 "project_name": issue["projectName"],
                                 "similarity": round(float(similarity), 3),
                         }
                         collection_assigned_feedback.insert_one(assigned_feedback)
 
-    return jsonify({'message': 'Feedbacks erfolgreich Issues zugewiesen'})
+    return jsonify({'message': 'assignment was successful'})
+
+
+def calculate_feedback_embedding(feedback_name):
+    feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
+    feedback_array = feedback_document.get("feedback", [])
+    feedback_embeddings = []
+    for feedback in feedback_array:
+        feedback_text = feedback.get("text")
+        text_embedding = get_embeddings(feedback_text)
+        feedback_embedding = {
+            'feedback_id': feedback.get('id'),
+            'embedding': text_embedding
+        }
+        feedback_embeddings.append(feedback_embedding)
+    return feedback_embeddings
 
 
 @issue_feedback_relation_bp.route('/assign_feedback_to_issues_by_tore/<feedback_name>/<max_similarity_value>', methods=['POST'])
@@ -341,6 +353,7 @@ def assign_feedback_to_issues_by_tore(feedback_name, max_similarity_value):
     feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
     feedback_array = feedback_document.get("feedback", [])
     jira_collection = list(collection_jira_issues.find({}))
+    feedback_embeddings = calculate_feedback_embedding(feedback_name)
     for project in jira_collection:
         is_selected = project.get("selectedToAssign")
         if is_selected:
@@ -355,12 +368,12 @@ def assign_feedback_to_issues_by_tore(feedback_name, max_similarity_value):
                 summary_embedding = get_embeddings(issue_text)
                 for feedback in feedback_array:
                     assigned_tore = feedback.get('tore', [])
-                    feedback_text = feedback.get("text")
                     for tore in assigned_tore:
                         if issue_type == tore:
-                            text_embedding = get_embeddings(feedback_text)
+                            matching_feedback = next((embedding['embedding'] for embedding in feedback_embeddings
+                                                      if embedding.get('feedback_id') == feedback.get('id')), None)
 
-                            similarity = cosine_similarity([summary_embedding], [text_embedding])[0][0]
+                            similarity = cosine_similarity([summary_embedding], [matching_feedback])[0][0]
 
                             if similarity > max_similarity_value:
                                 assigned_feedback_with_tore = {
@@ -371,5 +384,4 @@ def assign_feedback_to_issues_by_tore(feedback_name, max_similarity_value):
                                 }
                                 collection_assigned_feedback_with_tore.insert_one(assigned_feedback_with_tore)
 
-    return jsonify({'message': 'the assignment was successful'})
-
+    return jsonify({'message': 'assignment was successful'})
