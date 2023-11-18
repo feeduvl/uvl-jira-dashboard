@@ -1,17 +1,47 @@
 from flask import jsonify, Blueprint, request
-from pymongo import MongoClient
 import re
+from mongo import (collection_assigned_feedback,
+                   collection_assigned_feedback_with_tore,
+                   collection_imported_feedback,
+                   collection_feedback,
+                   collection_annotations)
 
 feedback_bp = Blueprint('feedback', __name__)
 
-client = MongoClient("mongodb://mongo:27017/")
-dbIssues = client["jira_dashboard"]
-dbFeedback = client["concepts_data"]
-collection_feedback = dbFeedback["dataset"]
-collection_annotations = dbFeedback["annotation"]
-collection_imported_feedback = dbIssues["imported_feedback"]
-collection_assigned_feedback = dbIssues["assigned_feedback"]
-collection_assigned_feedback_with_tore = dbIssues["assigned_feedback_with_tore"]
+
+@feedback_bp.route('/get_feedback_without_assigned_elements/<feedback_name>', methods=['GET'])
+def get_issues_without_assigned_elements(feedback_name):
+    unassigned_feedback = []
+
+    feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
+    feedback_collection = feedback_document.get("feedback", [])
+
+    for feedback in feedback_collection:
+        feedback_id = feedback.get('id')
+
+        assigned_feedback = collection_assigned_feedback.find_one({'feedback_id': feedback_id})
+        tore_feedback = collection_assigned_feedback_with_tore.find_one({'feedback_id': feedback_id})
+
+        if not assigned_feedback and not tore_feedback:
+            unassigned_feedback.append(feedback)
+
+    page = int(request.args.get('page', default=1))
+    size = int(request.args.get('size', default=-1))
+
+    if size == -1:
+        size = len(unassigned_feedback)
+
+    start_index = (page - 1) * size
+    end_index = min(start_index + size, len(unassigned_feedback))
+
+    paginated_unassigned_issues = unassigned_feedback[start_index:end_index]
+
+    return jsonify({
+        "unassigned_feedback": paginated_unassigned_issues,
+        "currentPage": page,
+        "totalItems": len(unassigned_feedback),
+        "totalPages": (len(unassigned_feedback) + size - 1) // size
+    })
 
 
 @feedback_bp.route('/assign_tore_to_feedback/<annotation_name>/<feedback_name>', methods=['GET'])
@@ -167,7 +197,6 @@ def get_feedback():
         return jsonify(res), 200
 
 
-
 @feedback_bp.route('/get_feedback_names', methods=['GET'])
 def get_feedback_names():
     feedback = collection_feedback.find({})
@@ -203,7 +232,8 @@ def get_assigned_feedback(issue_key):
             if feedback:
                 feedback_array = feedback.get("feedback", [])
                 matching_feedback = next((fb for fb in feedback_array if fb.get('id') == feedback_id), None)
-                matching_assigned_feedback = next((af for af in assigned_feedback if af['feedback_id'] == feedback_id), None)
+                matching_assigned_feedback = next((af for af in assigned_feedback if af['feedback_id'] == feedback_id),
+                                                  None)
                 if matching_assigned_feedback:
                     similarity = matching_assigned_feedback.get('similarity')
                     feedback_with_similarity = {
@@ -276,7 +306,9 @@ def get_assigned_tore_feedback(issue_key):
 
 @feedback_bp.route('/get_unassigned_tore_feedback/<issue_key>/<feedback_name>', methods=['GET'])
 def get_unassigned_tore_feedback(issue_key, feedback_name):
-    assigned_feedback_ids = set(item['feedback_id'] for item in collection_assigned_feedback_with_tore.find({'issue_key': issue_key}, {'feedback_id': 1}))
+    assigned_feedback_ids = set(item['feedback_id'] for item in
+                                collection_assigned_feedback_with_tore.find({'issue_key': issue_key},
+                                                                            {'feedback_id': 1}))
     feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
     feedback_array = feedback_document.get("feedback", [])
     unassigned_feedback = []
@@ -310,7 +342,8 @@ def get_unassigned_tore_feedback(issue_key, feedback_name):
 
 @feedback_bp.route('/get_unassigned_feedback/<issue_key>/<feedback_name>', methods=['GET'])
 def get_unassigned_feedback(issue_key, feedback_name):
-    assigned_feedback_ids = set(item['feedback_id'] for item in collection_assigned_feedback.find({'issue_key': issue_key}, {'feedback_id': 1}))
+    assigned_feedback_ids = set(
+        item['feedback_id'] for item in collection_assigned_feedback.find({'issue_key': issue_key}, {'feedback_id': 1}))
     feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
     feedback_array = feedback_document.get("feedback", [])
     unassigned_feedback = []
@@ -364,4 +397,3 @@ def delete_all_feedback(feedback_name):
         return jsonify({"message": "Feedback deleted."})
     else:
         return jsonify({"message": "Dataset not found."}, 404)
-

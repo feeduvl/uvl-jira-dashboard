@@ -1,23 +1,93 @@
 from transformers import DistilBertTokenizer, DistilBertModel
 import torch
 from flask import jsonify, Blueprint, request
-from pymongo import MongoClient
 from sklearn.metrics.pairwise import cosine_similarity
 import spacy
+from mongo import (collection_jira_issues,
+                   collection_assigned_feedback,
+                   collection_assigned_feedback_with_tore,
+                   collection_imported_feedback,
+                   collection_saved_data)
 
 nlp = spacy.load("en_core_web_sm")
 
 issue_feedback_relation_bp = Blueprint('issue_feedback_relation', __name__)
 
-client = MongoClient("mongodb://mongo:27017/")
-dbIssues = client["jira_dashboard"]
-collection_jira_issues = dbIssues["jira_issue"]
-collection_imported_feedback = dbIssues["imported_feedback"]
-collection_assigned_feedback = dbIssues["assigned_feedback"]
-collection_assigned_feedback_with_tore = dbIssues["assigned_feedback_with_tore"]
-
 tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
 model = DistilBertModel.from_pretrained('distilbert-base-uncased')
+
+
+@issue_feedback_relation_bp.route('/delete_data/<name>', methods=['DELETE'])
+def delete_data(name):
+    if collection_saved_data.find_one({'name': name}):
+        collection_saved_data.delete_one({'name': name})
+        return jsonify({'message': f'Data with name {name} deleted successfully'})
+    else:
+        return jsonify({'error': f'Data with name {name} not found'}), 404
+
+
+@issue_feedback_relation_bp.route('/get_saved_data_names', methods=['GET'])
+def get_unique_names():
+    saved_data = list(collection_saved_data.find({}, {'_id': 0, 'name': 1}))
+
+    unique_names = set(item['name'] for item in saved_data if 'name' in item)
+
+    return jsonify(list(unique_names))
+
+
+@issue_feedback_relation_bp.route('/restore_data/<name>', methods=['GET'])
+def restore_data(name):
+    saved_data = collection_saved_data.find_one({'name': name})
+
+    if saved_data:
+        data_imported_feedback = saved_data['imported_feedback']
+        data_jira_issues = saved_data['jira_issues']
+        data_assigned_feedback = saved_data['assigned_feedback']
+        data_tore_assigned_feedback = saved_data['tore_assigned_feedback']
+
+        collection_imported_feedback.delete_many({})
+        collection_jira_issues.delete_many({})
+        collection_assigned_feedback.delete_many({})
+        collection_assigned_feedback_with_tore.delete_many({})
+
+        for item in data_imported_feedback:
+            collection_imported_feedback.insert_one(item)
+
+        for item in data_jira_issues:
+            collection_jira_issues.insert_one(item)
+
+        for item in data_assigned_feedback:
+            collection_assigned_feedback.insert_one(item)
+
+        for item in data_tore_assigned_feedback:
+            collection_assigned_feedback_with_tore.insert_one(item)
+
+        return jsonify({'message': 'restored successful.'})
+    else:
+        return jsonify({'error': 'dataset not found.'}), 400
+
+
+@issue_feedback_relation_bp.route('/save_data/<name>', methods=['POST'])
+def save_data(name):
+    if collection_saved_data.find_one({'name': name}):
+        return jsonify({'error': 'Name already exists!'}), 400
+
+    data_imported_feedback = list(collection_imported_feedback.find())
+    data_jira_issues = list(collection_jira_issues.find())
+    data_assigned_feedback = list(collection_assigned_feedback.find())
+    data_tore_assigned_feedback = list(collection_assigned_feedback_with_tore.find())
+
+    combined_data = {
+        'name': name,
+        'imported_feedback': data_imported_feedback,
+        'jira_issues': data_jira_issues,
+        'assigned_feedback': data_assigned_feedback,
+        'tore_assigned_feedback': data_tore_assigned_feedback
+    }
+
+    collection_saved_data.insert_one(combined_data)
+
+    return jsonify({'message': 'Saved successfully'})
 
 
 @issue_feedback_relation_bp.route('/get_data_to_export/<feedback_name>', methods=['GET'])
@@ -257,13 +327,13 @@ def get_embeddings(text):
     # jedes wort nur einmal in array, weil es trotzdem jede stelle findet
     nouns_and_verbs = set(token.text for token in doc if token.pos_ in ("NOUN", "VERB"))
     nouns_and_verbs = list(nouns_and_verbs)
-    #tokenize text - konvertiert text in Abfolge von Tokens mit position in form von pytorch tensor
+    # tokenize text - konvertiert text in Abfolge von Tokens mit position in form von pytorch tensor
     tokens = tokenizer(text, return_tensors="pt")
     # das keine gradienten (Backpropagation verwendet wird)
     with torch.no_grad():
-        #tokens in einzelne Komponenten entpacken
+        # tokens in einzelne Komponenten entpacken
         outputs = model(**tokens)
-    #durchschnittliches embedding für text + dim1=durchschnittswert für jeden token + squeeze entfernt überflüssige dim + numypy-array bildung
+    # durchschnittliches embedding für text + dim1=durchschnittswert für jeden token + squeeze entfernt überflüssige dim + numypy-array bildung
     embedding = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
 
     embeddings = []
@@ -286,9 +356,9 @@ def get_embeddings(text):
                     # dim0 = durcshnitt des gesamten Satz ohne Kontext und sematische Bedeutung der einzelnen Wörter
                     word_embedding = outputs.last_hidden_state[0, i:i + len(word_tokens), :].mean(dim=0).numpy()
                     embeddings.append(word_embedding)
-                    #Wenn der Satzkontext stärker berücksichtigt werden soll, ist dim=1 die bessere Wahl.
+                    # Wenn der Satzkontext stärker berücksichtigt werden soll, ist dim=1 die bessere Wahl.
                     # Wenn jedoch nur die semantische Bedeutung der Nomen und Verben
-                        # in Bezug auf den gesamten Text betrachtet werden soll, dim0
+                    # in Bezug auf den gesamten Text betrachtet werden soll, dim0
     # Creating an overall embedding for the set by averaging the embeddings
     if embeddings:
         # nötig für spezifische informationen über wörter im text
@@ -321,10 +391,10 @@ def assign_feedback_to_issues(feedback_name, max_similarity_value):
 
                     if similarity > max_similarity_value:
                         assigned_feedback = {
-                                'feedback_id': embedded_feedback.get('feedback_id'),
-                                "issue_key": issue["key"],
-                                "project_name": issue["projectName"],
-                                "similarity": round(float(similarity), 3),
+                            'feedback_id': embedded_feedback.get('feedback_id'),
+                            "issue_key": issue["key"],
+                            "project_name": issue["projectName"],
+                            "similarity": round(float(similarity), 3),
                         }
                         collection_assigned_feedback.insert_one(assigned_feedback)
 
@@ -346,7 +416,8 @@ def calculate_feedback_embedding(feedback_name):
     return feedback_embeddings
 
 
-@issue_feedback_relation_bp.route('/assign_feedback_to_issues_by_tore/<feedback_name>/<max_similarity_value>', methods=['POST'])
+@issue_feedback_relation_bp.route('/assign_feedback_to_issues_by_tore/<feedback_name>/<max_similarity_value>',
+                                  methods=['POST'])
 def assign_feedback_to_issues_by_tore(feedback_name, max_similarity_value):
     max_similarity_value = float(max_similarity_value)
     collection_assigned_feedback_with_tore.delete_many({})

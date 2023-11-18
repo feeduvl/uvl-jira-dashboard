@@ -1,16 +1,47 @@
 import os
 import requests
 from flask import Blueprint, request, jsonify
-from pymongo import MongoClient
 import re
+from mongo import (collection_jira_issues,
+                   collection_assigned_feedback,
+                   collection_assigned_feedback_with_tore)
 
 jira_issue_bp = Blueprint('jira_issue', __name__)
 
-client = MongoClient("mongodb://mongo:27017/")
-dbIssues = client["jira_dashboard"]
-collection_jira_issues = dbIssues["jira_issue"]
-collection_assigned_feedback = dbIssues["assigned_feedback"]
-collection_assigned_feedback_with_tore = dbIssues["assigned_feedback_with_tore"]
+@jira_issue_bp.route('/get_issues_without_assigned_elements', methods=['GET'])
+def get_issues_without_assigned_elements():
+
+    unassigned_issues = []
+    for issue in collection_jira_issues.find({}):
+        issues = issue.get('issues', [])
+
+        for individual_issue in issues:
+            issue_key = individual_issue.get('key')
+
+            assigned_issue = collection_assigned_feedback.find_one({'issue_key': issue_key})
+            tore_issue = collection_assigned_feedback_with_tore.find_one({'issue_key': issue_key})
+
+            if not assigned_issue and not tore_issue:
+                unassigned_issues.append(individual_issue)
+
+    page = int(request.args.get('page', default=1))
+    size = int(request.args.get('size', default=-1))
+
+    if size == -1:
+        size = len(unassigned_issues)
+
+    start_index = (page - 1) * size
+    end_index = min(start_index + size, len(unassigned_issues))
+
+    paginated_unassigned_issues = unassigned_issues[start_index:end_index]
+
+    return jsonify({
+        "unassigned_issues": paginated_unassigned_issues,
+        "currentPage": page,
+        "totalItems": len(unassigned_issues),
+        "totalPages": (len(unassigned_issues) + size - 1) // size
+    })
+
 
 
 @jira_issue_bp.route('/get_unassigned_issues/<feedback_id>', methods=['GET'])
