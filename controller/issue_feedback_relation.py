@@ -3,6 +3,9 @@ import torch
 from flask import jsonify, Blueprint, request
 from sklearn.metrics.pairwise import cosine_similarity
 import spacy
+import re
+import numpy as np
+#from controller.evaluationMethods import RecallPrecisionCalculator
 from mongo import (collection_jira_issues,
                    collection_assigned_feedback,
                    collection_assigned_feedback_with_tore,
@@ -115,6 +118,7 @@ def get_data_to_export(feedback_name):
                 if issue['key'] == issue_key:
                     issue_summary = issue['summary']
                     issue_description = issue['description']
+                    issue_description = re.sub(r'[^a-zA-Z0-9.,: ]', '', issue_description)
                     break
             if issue_summary is not None and issue_description is not None:
                 issue_info[issue_key] = {
@@ -127,6 +131,7 @@ def get_data_to_export(feedback_name):
     for document in imported_feedback:
         feedback_id = document['id']
         feedback_text = document['text']
+        feedback_text = re.sub(r'[^a-zA-Z0-9.,: ]', '', feedback_text)
         feedback_info[feedback_id] = feedback_text
 
     for issue_key, feedback_ids in unique_issue_keys_with_feedback_ids.items():
@@ -167,6 +172,7 @@ def get_data_tore_to_export(feedback_name):
                 if issue['key'] == issue_key:
                     issue_summary = issue['summary']
                     issue_description = issue['description']
+                    issue_description = re.sub(r'[^a-zA-Z0-9.,: ]', '', issue_description)
                     break
             if issue_summary is not None and issue_description is not None:
                 issue_info[issue_key] = {
@@ -179,6 +185,7 @@ def get_data_tore_to_export(feedback_name):
     for document in imported_feedback:
         feedback_id = document['id']
         feedback_text = document['text']
+        feedback_text = re.sub(r'[^a-zA-Z0-9.,: ]', '', feedback_text)
         feedback_info[feedback_id] = feedback_text
 
     for issue_key, feedback_ids in unique_issue_keys_with_feedback_ids.items():
@@ -324,17 +331,13 @@ def delete_tore_assigned_issues_for_feedback(feedback_id):
 
 def get_embeddings(text):
     doc = nlp(text)
-    # jedes wort nur einmal in array, weil es trotzdem jede stelle findet
     nouns_and_verbs = set(token.text for token in doc if token.pos_ in ("NOUN", "VERB"))
     nouns_and_verbs = list(nouns_and_verbs)
-    # tokenize text - konvertiert text in Abfolge von Tokens mit position in form von pytorch tensor
     tokens = tokenizer(text, return_tensors="pt")
     # das keine gradienten (Backpropagation verwendet wird)
     with torch.no_grad():
         # tokens in einzelne Komponenten entpacken
         outputs = model(**tokens)
-    # durchschnittliches embedding für text + dim1=durchschnittswert für jeden token + squeeze entfernt überflüssige dim + numypy-array bildung
-    embedding = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
 
     embeddings = []
 
@@ -342,35 +345,40 @@ def get_embeddings(text):
         for word in nouns_and_verbs:
             # tokenize word from nouns_and_verbs
             word_tokens = tokenizer.tokenize(word)
-
             # convert token-sequenz to String gesamter Text
             tokenized_text = tokenizer.convert_ids_to_tokens(tokens["input_ids"][0])
-
-            # search for word in tokenized String
-            # iteriert durch tokenized text. -len verhindert out of bounce
+            # Hier wird für jedes identifizierte Nomen oder Verb im Text ein Embedding erstellt. Der entsprechende Abschnitt des
+            # outputs.last_hidden_state-Tensors, der zu diesem spezifischen Wort gehört, wird ausgewählt. Dann wird der
+            # Durchschnitt über die Token-Dimension (dim=0) genommen, um das Embedding für dieses spezielle Wort zu berechnen.
+            # # search for word in tokenized String
+            # # iteriert durch tokenized text. -len verhindert out of bounce
             for i in range(len(tokenized_text) - len(word_tokens) + 1):
                 # ist word_token in sequenz von tokenized_text die bei i beginnt und so land wie word_tokens ist
                 if tokenized_text[i:i + len(word_tokens)] == word_tokens:
-                    # [0, i:i + len(word_tokens), :] 0= erster Satz im text. rest wählt die tokens aus, die zum word_token gehören
-                    # .mean(dim1) berechnet word embedding für aktueller wort = durchschnittswert über token des aktuellen wortes wird gebildet
-                    # dim0 = durcshnitt des gesamten Satz ohne Kontext und sematische Bedeutung der einzelnen Wörter
+                    # Die Liste embeddings enthält dann die Einbettungen für alle identifizierten Nomen und Verben im Text.
+                    # Diese Einbettungen repräsentieren den Kontext jedes einzelnen Worts im Bezug auf seine umgebenden Tokens.
                     word_embedding = outputs.last_hidden_state[0, i:i + len(word_tokens), :].mean(dim=0).numpy()
                     embeddings.append(word_embedding)
-                    # Wenn der Satzkontext stärker berücksichtigt werden soll, ist dim=1 die bessere Wahl.
-                    # Wenn jedoch nur die semantische Bedeutung der Nomen und Verben
-                    # in Bezug auf den gesamten Text betrachtet werden soll, dim0
-    # Creating an overall embedding for the set by averaging the embeddings
+
+    # Dieser Durchschnitt (summary_embedding) repräsentiert dann den Kontext, der durch die identifizierten Nomen und
+    # Verben im gesamten Text gebildet wird. Es ist eine Art Zusammenfassung des Kontexts, der durch die einzelnen
+    # Wörter beigetragen wird.
     if embeddings:
-        # nötig für spezifische informationen über wörter im text
-        summary_embedding = sum(embeddings) / len(embeddings)
+        summary_embedding = np.mean(embeddings, axis=0)
         return summary_embedding
     else:
-        return embedding
+        return outputs.last_hidden_state.mean(dim=0).squeeze().numpy() # if no NOUNS and VERBS where found
+# wenn Sie dim=0 verwenden, wird der Mittelwert über die Sätze berechnet und der resultierende Vektor
+# repräsentiert sozusagen einen durchschnittlichen Kontext für den gesamten Text. Wenn Sie dim=1 verwenden,
+# wird der Mittelwert für jeden Satz berechnet, wobei der Kontext auf die Token innerhalb jedes Satzes beschränkt ist.
+# Die Wahl hängt davon ab, ob Sie den Gesamtkontext des gesamten Textes oder den Kontext innerhalb einzelner Sätze
+# erfassen möchten.
 
 
 @issue_feedback_relation_bp.route('/assign_feedback_to_issues/<feedback_name>/<max_similarity_value>', methods=['POST'])
 def assign_feedback_to_issues(feedback_name, max_similarity_value):
     max_similarity_value = float(max_similarity_value)
+    #while max_similarity_value <= 0.9:
     collection_assigned_feedback.delete_many({})
     jira_collection = collection_jira_issues.find({})
     feedback_embeddings = calculate_feedback_embedding(feedback_name)
@@ -384,19 +392,22 @@ def assign_feedback_to_issues(feedback_name, max_similarity_value):
                 issue_text = summary
                 if description is not None:
                     issue_text = summary + ". " + description
-
                 summary_embedding = get_embeddings(issue_text)
                 for embedded_feedback in feedback_embeddings:
                     similarity = cosine_similarity([summary_embedding], [embedded_feedback.get('embedding')])[0][0]
-
                     if similarity > max_similarity_value:
                         assigned_feedback = {
                             'feedback_id': embedded_feedback.get('feedback_id'),
                             "issue_key": issue["key"],
                             "project_name": issue["projectName"],
-                            "similarity": round(float(similarity), 3),
+                            "similarity": str(round(float(similarity), 3)),
                         }
                         collection_assigned_feedback.insert_one(assigned_feedback)
+
+        # calculator = RecallPrecisionCalculator(collection_saved_data, collection_assigned_feedback, collection_jira_issues)
+        # calculator.calculate_metrics("sim-"+str(max_similarity_value))
+        # max_similarity_value += 0.01
+        # max_similarity_value = round(max_similarity_value, 2)
 
     return jsonify({'message': 'assignment was successful'})
 
@@ -451,7 +462,7 @@ def assign_feedback_to_issues_by_tore(feedback_name, max_similarity_value):
                                     'feedback_id': feedback.get('id'),
                                     "issue_key": issue["key"],
                                     "project_name": issue["projectName"],
-                                    "similarity": round(float(similarity), 3),
+                                    "similarity": str(round(float(similarity), 3)),
                                 }
                                 collection_assigned_feedback_with_tore.insert_one(assigned_feedback_with_tore)
 

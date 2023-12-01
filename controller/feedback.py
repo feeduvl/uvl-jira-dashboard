@@ -131,9 +131,8 @@ def load_feedback(feedback_name):
                         doc_id = doc.get('id')
                         doc_text = doc.get('text')
                         filtered_text = re.sub(r'^\d+\s*', '', doc_text)
-                        filtered_text = re.sub(r'[^a-zA-Z0-9\s.,()]', '', filtered_text)
-                        filtered_text = re.sub(r'\s+', ' ', filtered_text).strip()
-                        filtered_text = filtered_text.replace('\n', '').replace('\r', '')
+                        filtered_text = re.sub(r'[#\\]', '', filtered_text)
+                        filtered_text = re.sub(r'\r\n|\r|\n', ' ', filtered_text)
 
                         id_and_text = {
                             'id': doc_id,
@@ -218,6 +217,7 @@ def get_assigned_feedback(issue_key):
         size = int(request.args.get("size", default=-1))
 
         assigned_feedback = list(collection_assigned_feedback.find({'issue_key': issue_key}))
+        assigned_feedback = sorted(assigned_feedback, key=lambda x: x.get('similarity', 0), reverse=True)
         feedback_ids = [feedback['feedback_id'] for feedback in assigned_feedback]
 
         if size == -1:
@@ -266,6 +266,7 @@ def get_assigned_tore_feedback(issue_key):
         size = int(request.args.get("size", default=-1))
 
         assigned_feedback = list(collection_assigned_feedback_with_tore.find({'issue_key': issue_key}))
+        assigned_feedback = sorted(assigned_feedback, key=lambda x: x.get('similarity', 0), reverse=True)
         feedback_ids = [feedback['feedback_id'] for feedback in assigned_feedback]
 
         if size == -1:

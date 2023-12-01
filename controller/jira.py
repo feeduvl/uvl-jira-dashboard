@@ -146,6 +146,7 @@ def delete_issue(project_name, key):
 @jira_issue_bp.route('/get_assigned_issues/<feedback_id>', methods=['GET'])
 def get_assigned_issues(feedback_id):
     assigned_issues = list(collection_assigned_feedback.find({'feedback_id': feedback_id}))
+    assigned_issues = sorted(assigned_issues, key=lambda x: x.get('similarity', 0), reverse=True)
     issue_keys = [issue['issue_key'] for issue in assigned_issues]
     project_names = set(issue['project_name'] for issue in assigned_issues)
     related_issues = []
@@ -172,23 +173,27 @@ def get_assigned_issues(feedback_id):
                     }
 
                     related_issues.append(related_issue)
+    sorted_issues = sorted(related_issues,
+                           key=lambda x: float(x["similarity"]) if x["similarity"].replace('.', '',
+                                                                                           1).isdigit() else float(
+                               'inf'), reverse=True)
 
     page = int(request.args.get('page', default=1))
     size = int(request.args.get('size', default=-1))
 
     if size == -1:
-        size = len(related_issues)
+        size = len(sorted_issues)
 
     start_index = (page - 1) * size
-    end_index = min(start_index + size, len(related_issues))
+    end_index = min(start_index + size, len(sorted_issues))
 
-    paginated_related_issues = related_issues[start_index:end_index]
+    paginated_related_issues = sorted_issues[start_index:end_index]
 
     response = {
         "related_issues": paginated_related_issues,
         "currentPage": page,
-        "totalItems": len(related_issues),
-        "totalPages": (len(related_issues) + size - 1) // size
+        "totalItems": len(sorted_issues),
+        "totalPages": (len(sorted_issues) + size - 1) // size
     }
 
     return jsonify(response)
@@ -197,6 +202,7 @@ def get_assigned_issues(feedback_id):
 @jira_issue_bp.route('/get_tore_assigned_issues/<feedback_id>', methods=['GET'])
 def get_tore_assigned_issues(feedback_id):
     assigned_issues = list(collection_assigned_feedback_with_tore.find({'feedback_id': feedback_id}))
+    assigned_issues = sorted(assigned_issues, key=lambda x: x.get('similarity', 0), reverse=True)
     issue_keys = [issue['issue_key'] for issue in assigned_issues]
     project_names = set(issue['project_name'] for issue in assigned_issues)
     related_issues = []
@@ -223,23 +229,26 @@ def get_tore_assigned_issues(feedback_id):
                     }
 
                     related_issues.append(related_issue)
-
+    sorted_issues = sorted(related_issues,
+                           key=lambda x: float(x["similarity"]) if x["similarity"].replace('.', '',
+                                                                                           1).isdigit() else float(
+                               'inf'), reverse=True)
     page = int(request.args.get('page', default=1))
     size = int(request.args.get('size', default=-1))
 
     if size == -1:
-        size = len(related_issues)
+        size = len(sorted_issues)
 
     start_index = (page - 1) * size
-    end_index = min(start_index + size, len(related_issues))
+    end_index = min(start_index + size, len(sorted_issues))
 
-    paginated_related_issues = related_issues[start_index:end_index]
+    paginated_related_issues = sorted_issues[start_index:end_index]
 
     response = {
         "related_issues": paginated_related_issues,
         "currentPage": page,
-        "totalItems": len(related_issues),
-        "totalPages": (len(related_issues) + size - 1) // size
+        "totalItems": len(sorted_issues),
+        "totalPages": (len(sorted_issues) + size - 1) // size
     }
 
     return jsonify(response)
