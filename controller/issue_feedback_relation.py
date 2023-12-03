@@ -5,7 +5,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import spacy
 import re
 import numpy as np
-#from controller.evaluationMethods import RecallPrecisionCalculator
+# from controller.evaluationMethods import MetricsCalculator
 from mongo import (collection_jira_issues,
                    collection_assigned_feedback,
                    collection_assigned_feedback_with_tore,
@@ -403,8 +403,7 @@ def assign_feedback_to_issues(feedback_name, max_similarity_value):
                             "similarity": str(round(float(similarity), 3)),
                         }
                         collection_assigned_feedback.insert_one(assigned_feedback)
-
-        # calculator = RecallPrecisionCalculator(collection_saved_data, collection_assigned_feedback, collection_jira_issues)
+        # calculator = MetricsCalculator(collection_saved_data, collection_assigned_feedback, collection_jira_issues)
         # calculator.calculate_metrics("sim-"+str(max_similarity_value))
         # max_similarity_value += 0.01
         # max_similarity_value = round(max_similarity_value, 2)
@@ -431,6 +430,7 @@ def calculate_feedback_embedding(feedback_name):
                                   methods=['POST'])
 def assign_feedback_to_issues_by_tore(feedback_name, max_similarity_value):
     max_similarity_value = float(max_similarity_value)
+    # while max_similarity_value <= 0.89:
     collection_assigned_feedback_with_tore.delete_many({})
     feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
     feedback_array = feedback_document.get("feedback", [])
@@ -454,9 +454,7 @@ def assign_feedback_to_issues_by_tore(feedback_name, max_similarity_value):
                         if issue_type == tore:
                             matching_feedback = next((embedding['embedding'] for embedding in feedback_embeddings
                                                       if embedding.get('feedback_id') == feedback.get('id')), None)
-
                             similarity = cosine_similarity([summary_embedding], [matching_feedback])[0][0]
-
                             if similarity > max_similarity_value:
                                 assigned_feedback_with_tore = {
                                     'feedback_id': feedback.get('id'),
@@ -465,5 +463,9 @@ def assign_feedback_to_issues_by_tore(feedback_name, max_similarity_value):
                                     "similarity": str(round(float(similarity), 3)),
                                 }
                                 collection_assigned_feedback_with_tore.insert_one(assigned_feedback_with_tore)
-
+        # calculator = MetricsCalculator(collection_saved_data, collection_assigned_feedback_with_tore,
+        #                                        collection_jira_issues)
+        # calculator.calculate_metrics("sim-"+str(max_similarity_value))
+        # max_similarity_value += 0.01
+        # max_similarity_value = round(max_similarity_value, 2)
     return jsonify({'message': 'assignment was successful'})
