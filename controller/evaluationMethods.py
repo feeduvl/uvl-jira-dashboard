@@ -4,7 +4,7 @@ from mongo import (collection_assigned_feedback,
                    collection_saved_data,
                    collection_jira_issues)
 
-ground_truth = "Ground_truth_Completed"
+ground_truth = "Ground_truth-23-12-09"
 
 
 class MetricsCalculator:
@@ -105,6 +105,6 @@ class MetricsCalculator:
 
 if __name__ == '__main__':
     calculator = MetricsCalculator(collection_saved_data, collection_assigned_feedback, collection_jira_issues)
-    calculator.calculate_metrics("sim")
-    calculator = MetricsCalculator(collection_saved_data, collection_assigned_feedback_with_tore, collection_jira_issues)
-    calculator.calculate_metrics("tore-sim")
+    calculator.calculate_metrics("NEW_sim-0.85")
+    # calculator = MetricsCalculator(collection_saved_data, collection_assigned_feedback_with_tore, collection_jira_issues)
+    # calculator.calculate_metrics("Evaluation_tore")
