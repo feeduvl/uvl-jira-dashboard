@@ -1,3 +1,5 @@
+from operator import itemgetter
+
 from transformers import DistilBertTokenizer, DistilBertModel
 import torch
 from flask import jsonify, Blueprint, request
@@ -5,13 +7,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 import spacy
 import re
 import numpy as np
-# from controller.evaluationMethods import MetricsCalculator
-from mongo import (collection_jira_issues,
-                   collection_assigned_feedback,
-                   collection_assigned_feedback_with_tore,
-                   collection_imported_feedback,
-                   collection_saved_data)
+from mongo import mongo_db
 
+collection_jira_issues = mongo_db.collection_jira_issues
+collection_assigned_feedback = mongo_db.collection_assigned_feedback
+collection_assigned_feedback_with_tore = mongo_db.collection_assigned_feedback_with_tore
+collection_imported_feedback = mongo_db.collection_imported_feedback
+collection_saved_data = mongo_db.collection_saved_data
 nlp = spacy.load("en_core_web_sm")
 
 issue_feedback_relation_bp = Blueprint('issue_feedback_relation', __name__)
@@ -329,56 +331,75 @@ def delete_tore_assigned_issues_for_feedback(feedback_id):
     return jsonify({'error': 'Feedback deleted'})
 
 
-def get_embeddings(text):
-    doc = nlp(text)
-    nouns_and_verbs = set(token.text for token in doc if token.pos_ in ("NOUN", "VERB"))
-    nouns_and_verbs = list(nouns_and_verbs)
+def get_embeddings_without_spacy(text):
     tokens = tokenizer(text, return_tensors="pt")
-    # das keine gradienten (Backpropagation verwendet wird)
+    with torch.no_grad():
+        outputs = model(**tokens)
+    embedding = outputs.last_hidden_state.mean(dim=0).squeeze().numpy()
+    summary_embedding = np.mean(embedding, axis=0)
+    return summary_embedding
+
+
+def get_embeddings(text):
+    # Tokenisiere den Text mit DistilBERT
+    tokens = tokenizer(text, return_tensors="pt")
+
+    # Berechne die kontextualisierten Token-Einbettungen. das keine gradienten (Backpropagation verwendet wird)
     with torch.no_grad():
         # tokens in einzelne Komponenten entpacken
         outputs = model(**tokens)
 
-    embeddings = []
+    distilbert_embeddings = outputs.last_hidden_state
 
-    if nouns_and_verbs:
-        for word in nouns_and_verbs:
-            # tokenize word from nouns_and_verbs
-            word_tokens = tokenizer.tokenize(word)
-            # convert token-sequenz to String gesamter Text
-            tokenized_text = tokenizer.convert_ids_to_tokens(tokens["input_ids"][0])
-            # Hier wird für jedes identifizierte Nomen oder Verb im Text ein Embedding erstellt. Der entsprechende Abschnitt des
-            # outputs.last_hidden_state-Tensors, der zu diesem spezifischen Wort gehört, wird ausgewählt. Dann wird der
-            # Durchschnitt über die Token-Dimension (dim=0) genommen, um das Embedding für dieses spezielle Wort zu berechnen.
-            # # search for word in tokenized String
-            # # iteriert durch tokenized text. -len verhindert out of bounce
-            for i in range(len(tokenized_text) - len(word_tokens) + 1):
-                # ist word_token in sequenz von tokenized_text die bei i beginnt und so land wie word_tokens ist
-                if tokenized_text[i:i + len(word_tokens)] == word_tokens:
-                    # Die Liste embeddings enthält dann die Einbettungen für alle identifizierten Nomen und Verben im Text.
-                    # Diese Einbettungen repräsentieren den Kontext jedes einzelnen Worts im Bezug auf seine umgebenden Tokens.
-                    word_embedding = outputs.last_hidden_state[0, i:i + len(word_tokens), :].mean(dim=0).numpy()
-                    embeddings.append(word_embedding)
+    # Extrahiere die Token-Vektoren nur für Nomen und Verben - lower to make it case-insensitive
+    nouns_and_verbs = set(token.text.lower() for token in nlp(text) if token.pos_ in {"NOUN", "VERB"})
+    relevant_embeddings = []
 
+    for word in nouns_and_verbs:
+        # tokenize word from nouns_and_verbs
+        word_tokens = tokenizer.tokenize(word)
+        # convert token-sequenz to String gesamter Text
+        tokenized_text = tokenizer.convert_ids_to_tokens(tokens["input_ids"][0])
+        # Hier wird für jedes identifizierte Nomen oder Verb im Text ein Embedding erstellt. Der entsprechende Abschnitt des
+        # outputs.last_hidden_state-Tensors, der zu diesem spezifischen Wort gehört, wird ausgewählt. Dann wird der
+        # Durchschnitt über die Token-Dimension (dim=0) genommen, um das Embedding für dieses spezielle Wort zu berechnen.
+        # # search for word in tokenized String
+        # # iteriert durch tokenized text. -len verhindert out of bounce
+        for i in range(len(tokenized_text) - len(word_tokens) + 1):
+            # ist word_token in sequenz von tokenized_text die bei i beginnt und so land wie word_tokens ist
+            if tokenized_text[i:i + len(word_tokens)] == word_tokens:
+                # Die Liste embeddings enthält dann die Einbettungen für alle identifizierten Nomen und Verben im Text.
+                # Diese Einbettungen repräsentieren den Kontext jedes einzelnen Worts im Bezug auf seine umgebenden Tokens.
+                # Bei Verwendung von dim=0, wird der Mittelwert über die Sätze berechnet und der resultierende Vektor
+                # repräsentiert sozusagen einen durchschnittlichen Kontext für den gesamten Text.
+                # Bei Verwendung von dim=1, wird der Mittelwert für jeden Satz berechnet, wobei der Kontext auf die Token innerhalb jedes Satzes beschränkt ist.
+                # Die Wahl hängt davon ab, ob der Gesamtkontext des gesamten Textes oder der Kontext innerhalb einzelner Sätze
+                # erfassen werden soll.
+                word_embedding = distilbert_embeddings[0, i:i + len(word_tokens), :].numpy()
+                relevant_embeddings.extend(word_embedding)
     # Dieser Durchschnitt (summary_embedding) repräsentiert dann den Kontext, der durch die identifizierten Nomen und
     # Verben im gesamten Text gebildet wird. Es ist eine Art Zusammenfassung des Kontexts, der durch die einzelnen
     # Wörter beigetragen wird.
-    if embeddings:
-        summary_embedding = np.mean(embeddings, axis=0)
-        return summary_embedding
+    if relevant_embeddings:
+        average_embedding = np.mean(relevant_embeddings, axis=0)
     else:
-        return outputs.last_hidden_state.mean(dim=0).squeeze().numpy() # if no NOUNS and VERBS where found
-# wenn Sie dim=0 verwenden, wird der Mittelwert über die Sätze berechnet und der resultierende Vektor
-# repräsentiert sozusagen einen durchschnittlichen Kontext für den gesamten Text. Wenn Sie dim=1 verwenden,
-# wird der Mittelwert für jeden Satz berechnet, wobei der Kontext auf die Token innerhalb jedes Satzes beschränkt ist.
-# Die Wahl hängt davon ab, ob Sie den Gesamtkontext des gesamten Textes oder den Kontext innerhalb einzelner Sätze
-# erfassen möchten.
+        average_embedding = np.mean(distilbert_embeddings.squeeze().numpy(), axis=0)
+    return average_embedding
+
+
+@issue_feedback_relation_bp.route("/test", methods=["GET"])
+def get_embeddings_other_dim():
+    text1 = request.json.get('text1', '')
+    text2 = request.json.get('text2', '')
+    summary_embedding = get_embeddings(text1)
+    embedded_feedback = get_embeddings(text2)
+    similarity = cosine_similarity([summary_embedding], [embedded_feedback])[0][0]
+    return str(round(float(similarity), 3))
 
 
 @issue_feedback_relation_bp.route('/assign_feedback_to_issues/<feedback_name>/<max_similarity_value>', methods=['POST'])
 def assign_feedback_to_issues(feedback_name, max_similarity_value):
     max_similarity_value = float(max_similarity_value)
-    #while max_similarity_value <= 0.9:
     collection_assigned_feedback.delete_many({})
     jira_collection = collection_jira_issues.find({})
     feedback_embeddings = calculate_feedback_embedding(feedback_name)
@@ -391,8 +412,9 @@ def assign_feedback_to_issues(feedback_name, max_similarity_value):
                 description = issue.get("description")
                 issue_text = summary
                 if description is not None:
-                    issue_text = summary + ". " + description
+                    issue_text = summary + ": " + description
                 summary_embedding = get_embeddings(issue_text)
+                similarities = []
                 for embedded_feedback in feedback_embeddings:
                     similarity = cosine_similarity([summary_embedding], [embedded_feedback.get('embedding')])[0][0]
                     if similarity > max_similarity_value:
@@ -402,12 +424,8 @@ def assign_feedback_to_issues(feedback_name, max_similarity_value):
                             "project_name": issue["projectName"],
                             "similarity": str(round(float(similarity), 3)),
                         }
+                        similarities.append(assigned_feedback)
                         collection_assigned_feedback.insert_one(assigned_feedback)
-        # calculator = MetricsCalculator(collection_saved_data, collection_assigned_feedback, collection_jira_issues)
-        # calculator.calculate_metrics("sim-"+str(max_similarity_value))
-        # max_similarity_value += 0.01
-        # max_similarity_value = round(max_similarity_value, 2)
-
     return jsonify({'message': 'assignment was successful'})
 
 
@@ -430,7 +448,6 @@ def calculate_feedback_embedding(feedback_name):
                                   methods=['POST'])
 def assign_feedback_to_issues_by_tore(feedback_name, max_similarity_value):
     max_similarity_value = float(max_similarity_value)
-    # while max_similarity_value <= 0.89:
     collection_assigned_feedback_with_tore.delete_many({})
     feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
     feedback_array = feedback_document.get("feedback", [])
@@ -446,7 +463,7 @@ def assign_feedback_to_issues_by_tore(feedback_name, max_similarity_value):
                 description = issue.get("description")
                 issue_text = summary
                 if description is not None:
-                    issue_text = summary + ". " + description
+                    issue_text = summary + ": " + description
                 summary_embedding = get_embeddings(issue_text)
                 for feedback in feedback_array:
                     assigned_tore = feedback.get('tore', [])
@@ -463,9 +480,4 @@ def assign_feedback_to_issues_by_tore(feedback_name, max_similarity_value):
                                     "similarity": str(round(float(similarity), 3)),
                                 }
                                 collection_assigned_feedback_with_tore.insert_one(assigned_feedback_with_tore)
-        # calculator = MetricsCalculator(collection_saved_data, collection_assigned_feedback_with_tore,
-        #                                        collection_jira_issues)
-        # calculator.calculate_metrics("sim-"+str(max_similarity_value))
-        # max_similarity_value += 0.01
-        # max_similarity_value = round(max_similarity_value, 2)
     return jsonify({'message': 'assignment was successful'})

@@ -2,15 +2,17 @@ import os
 import requests
 from flask import Blueprint, request, jsonify
 import re
-from mongo import (collection_jira_issues,
-                   collection_assigned_feedback,
-                   collection_assigned_feedback_with_tore)
+from mongo import mongo_db
+
+collection_jira_issues = mongo_db.collection_jira_issues
+collection_assigned_feedback = mongo_db.collection_assigned_feedback
+collection_assigned_feedback_with_tore = mongo_db.collection_assigned_feedback_with_tore
 
 jira_issue_bp = Blueprint('jira_issue', __name__)
 
+
 @jira_issue_bp.route('/get_issues_without_assigned_elements', methods=['GET'])
 def get_issues_without_assigned_elements():
-
     unassigned_issues = []
     for issue in collection_jira_issues.find({}):
         issues = issue.get('issues', [])
@@ -41,7 +43,6 @@ def get_issues_without_assigned_elements():
         "totalItems": len(unassigned_issues),
         "totalPages": (len(unassigned_issues) + size - 1) // size
     })
-
 
 
 @jira_issue_bp.route('/get_unassigned_issues/<feedback_id>', methods=['GET'])
@@ -339,7 +340,7 @@ def get_all_jira_issues_from_db():
                 "totalPages": 0
             }
 
-        return jsonify(res), 200
+        return jsonify(res)
     except Exception as e:
         return jsonify({"error": "Internal Server Error"}), 500
 
@@ -391,7 +392,7 @@ def load_issue_types_from_jira_issues(project_name):
             if issue_type not in issue_types:
                 issue_types.append(issue_type)
     except Exception as e:
-        pass
+        return e
 
     return issue_types
 
@@ -420,11 +421,11 @@ def load_issues_from_project(project_name):
             if not isinstance(description, str):
                 description = str(description)
             extracted_text = re.sub(r'\{[^}]*}', '', description)
-            extracted_text = re.sub(r'\*|\|', '', extracted_text)
             extracted_text = re.sub(r'\r\n|\r|\n', ' ', extracted_text)
             issue_type = response_json["issues"][i]["fields"]["issuetype"]["name"]
             project_name = response_json["issues"][i]["fields"]["project"]["name"]
             summary = response_json["issues"][i]["fields"]["summary"]
+            summary = re.sub(r'^[^:]+:', '', summary)
             issue = {
                 "key": issue_key,
                 "description": extracted_text,
@@ -454,6 +455,6 @@ def get_all_jira_projects():
             project_names.append(project_name)
 
     except Exception as e:
-        pass
+        return e
 
     return project_names

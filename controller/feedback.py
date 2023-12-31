@@ -1,10 +1,12 @@
 from flask import jsonify, Blueprint, request
 import re
-from mongo import (collection_assigned_feedback,
-                   collection_assigned_feedback_with_tore,
-                   collection_imported_feedback,
-                   collection_feedback,
-                   collection_annotations)
+from mongo import mongo_db
+
+collection_feedback = mongo_db.collection_feedback
+collection_assigned_feedback = mongo_db.collection_assigned_feedback
+collection_assigned_feedback_with_tore = mongo_db.collection_assigned_feedback_with_tore
+collection_imported_feedback = mongo_db.collection_imported_feedback
+collection_annotations = mongo_db.collection_annotations
 
 feedback_bp = Blueprint('feedback', __name__)
 
@@ -88,7 +90,6 @@ def set_issue_type_by_tore_category(tore_list):
             issue_types.append("User Task")
         elif category == "Activity":
             issue_types.append("User Subtask")  # User Sub-Task?
-            issue_types.append("User Story")
         elif category == "Domain Data":
             issue_types.append("Diagram")  # Domain Data Diagram?
             issue_types.append("User Task")
@@ -96,7 +97,6 @@ def set_issue_type_by_tore_category(tore_list):
         elif category == "Stakeholder":
             issue_types.append("Persona")
             issue_types.append("User Role")  # Role?
-            issue_types.append("User Story")
         elif category == "Interaction":
             issue_types.append("System Function")
             issue_types.append("Diagram")  # UI-Structure Diagram?
@@ -183,7 +183,7 @@ def get_feedback():
                     "totalPages": 0
                 }
 
-            return jsonify(res), 200
+            return jsonify(res)
         except Exception as e:
             return jsonify({"error": "Internal Server Error"}), 500
     else:
@@ -193,7 +193,7 @@ def get_feedback():
             "totalItems": 0,
             "totalPages": 0
         }
-        return jsonify(res), 200
+        return jsonify(res)
 
 
 @feedback_bp.route('/get_feedback_names', methods=['GET'])
@@ -253,7 +253,7 @@ def get_assigned_feedback(issue_key):
             "totalPages": total_pages
         }
 
-        return jsonify(response), 200
+        return jsonify(response)
 
     except Exception as e:
         return jsonify({"error": "Internal Server Error"}), 500
@@ -300,7 +300,7 @@ def get_assigned_tore_feedback(issue_key):
             "totalItems": total_items,
             "totalPages": total_pages
         }
-        return jsonify(response), 200
+        return jsonify(response)
     except Exception as e:
         return jsonify({"error": "Internal Server Error"}), 500
 

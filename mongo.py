@@ -1,16 +1,28 @@
+import os
+
 from pymongo import MongoClient
 
-client = MongoClient("mongodb://mongo:27017/")
 
-dbIssues = client["jira_dashboard"]
-collection_jira_issues = dbIssues["jira_issue"]
-collection_imported_feedback = dbIssues["imported_feedback"]
-collection_assigned_feedback = dbIssues["assigned_feedback"]
-collection_assigned_feedback_with_tore = dbIssues["assigned_feedback_with_tore"]
-collection_saved_data = dbIssues["saved_data"]
+class MongoDB:
+    def __init__(self, port=27017):
+        is_testing = os.environ.get("FLASK_ENV") == "test"
 
-dbFeedback = client["concepts_data"]
-collection_feedback = dbFeedback["dataset"]
-collection_annotations = dbFeedback["annotation"]
-# collection_feedback = dbFeedback["test_ds"]
-# collection_annotations = dbFeedback["test_anno"]
+        # Wählen Sie den MongoDB-Host basierend auf der Umgebung
+        self.host = "localhost" if is_testing else "mongo"
+        # MongoDB-Verbindung initialisieren
+        self.client = MongoClient(f"mongodb://{self.host}:{port}/")
+
+        # Datenbank und Sammlungen initialisieren
+        self.db_issues = self.client["jira_dashboard"]
+        self.collection_jira_issues = self.db_issues["jira_issue"]
+        self.collection_imported_feedback = self.db_issues["imported_feedback"]
+        self.collection_assigned_feedback = self.db_issues["assigned_feedback"]
+        self.collection_assigned_feedback_with_tore = self.db_issues["assigned_feedback_with_tore"]
+        self.collection_saved_data = self.db_issues["saved_data"]
+
+        self.db_feedback = self.client["concepts_data"]
+        self.collection_feedback = self.db_feedback["dataset"]
+        self.collection_annotations = self.db_feedback["annotation"]
+
+
+mongo_db = MongoDB()
