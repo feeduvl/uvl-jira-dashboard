@@ -1,6 +1,6 @@
 from flask import Flask
 #need to be activated when run locally
-from flask_cors import CORS
+#from flask_cors import CORS
 from controller.feedback import feedback_bp
 from controller.jira import jira_issue_bp
 from controller.issue_feedback_relation import issue_feedback_relation_bp
