@@ -12,6 +12,7 @@ collection_imported_feedback = mongo_db.collection_imported_feedback
 
 ground_truth = "Ground_truth-23-12-09"
 
+
 class MetricsCalculator:
     def __init__(self, saved_data_collection, assigned_feedback_collection, jira_issues_collection,
                  feedback_collection):
@@ -20,10 +21,12 @@ class MetricsCalculator:
         self.jira_issues_collection = jira_issues_collection
         self.feedback_collection = feedback_collection
         self.results_df = pd.DataFrame(columns=["Issue Key", "Recall", "Precision", "F1-Score"])
+        self.word_count_results_df = pd.DataFrame(columns=["Issue Key", "Description", "Word Count"])
+        self.feedback_TORE_categories_results_df = pd.DataFrame(
+            columns=['User Task', 'User Subtask', 'Workspace', 'System Function'])
 
     def get_issue_keys_set(self):
         jira_keys_set = set()
-        # Iteriere über alle Dokumente in der jira_issues Collection
         for item in self.jira_issues_collection.find():
             issues_array = item.get("issues", [])
             for issue_item in issues_array:
@@ -32,27 +35,99 @@ class MetricsCalculator:
                     jira_keys_set.add(key)
         return list(jira_keys_set)
 
+    # To see how much feedback is still available per requirement type after the TORE pre-classification
+    def get_TORE_assigned_requirement_types(self):
+        categories = ['User Task', 'User Subtask', 'Workspace', 'System Function']
+        ut_count = 0
+        st_count = 0
+        sf_count = 0
+        ws_count = 0
+        for data in self.feedback_collection.find({}):
+            for feedback in data.get("feedback", []):
+                fb_id = feedback.get("id")
+                usertask = ""
+                subtask = ""
+                systemfunction = ""
+                workspace = ""
+                for tore in feedback.get("tore", []):
+                    for category in categories:
+                        if category in tore:
+                            if category == 'User Task':
+                                usertask = fb_id
+                                ut_count += 1
+                            if category == 'User Subtask':
+                                subtask = fb_id
+                                st_count += 1
+                            if category == 'Workspace':
+                                workspace = fb_id
+                                ws_count += 1
+                            if category == 'System Function':
+                                systemfunction = fb_id
+                                sf_count += 1
+                self.feedback_TORE_categories_results_df = pd.concat(
+                    [self.feedback_TORE_categories_results_df, pd.DataFrame(
+                        {"User Task": [usertask], "User Subtask": [subtask], "Workspace": [workspace],
+                         "System Function": [systemfunction]})],
+                    ignore_index=True, sort=False)
+            avg_df = pd.DataFrame({
+                "User Task": [ut_count],
+                "User Subtask": [st_count],
+                "Workspace": [ws_count],
+                "System Function": [sf_count]
+            })
+            self.feedback_TORE_categories_results_df = pd.concat([self.feedback_TORE_categories_results_df, avg_df],
+                                                                 ignore_index=True)
+
+            try:
+                self.feedback_TORE_categories_results_df.to_csv("feedbackToreCategories1.csv", index=False)
+                print("create successful CSV-file: feedbackToreCategories1.csv")
+            except Exception as e:
+                print(f"Error creating CSV-file: {e}")
+
+    # Specifies the requirements with different text lengths for evaluation with different
+    # lengths of requirements
     def get_issue_keys_set_string_length_filter(self, max, min):
         jira_keys_set = set()
-        # Iteriere über alle Dokumente in der jira_issues Collection
         for item in self.jira_issues_collection.find():
             issues_array = item.get("issues", [])
             for issue_item in issues_array:
                 key = issue_item.get("key")
-                type = issue_item.get("issueType")
                 description = issue_item.get("description", "")
 
-                # Entferne Sonderzeichen und tokenisiere den Text
                 description_without_punctuation = ''.join(
                     char for char in description if char.isalnum() or char.isspace())
                 words = word_tokenize(description_without_punctuation)
 
-                # Zähle die Anzahl der Wörter
                 word_count = len(words)
-                # Füge den Key zur Menge hinzu, wenn die Anzahl der Wörter kleiner als 20 ist
+
                 if key and min < word_count <= max:
                     jira_keys_set.add(key)
         return list(jira_keys_set)
+
+    # Specifies the requirements with different text lengths for evaluation with different
+    # lengths of requirements and exports them to a csv
+    def get_avg_description_length(self):
+
+        for item in self.jira_issues_collection.find():
+            issues_array = item.get("issues", [])
+            for issue_item in issues_array:
+                key = issue_item.get("key")
+                description = issue_item.get("description", "")
+
+                description_without_punctuation = ''.join(
+                    char for char in description if char.isalnum() or char.isspace())
+                words = word_tokenize(description_without_punctuation)
+
+                word_count = len(words)
+                self.word_count_results_df = pd.concat([self.word_count_results_df, pd.DataFrame(
+                    {"Issue Key": [key], "Description": [description], "Word Count": [word_count]})],
+                                                       ignore_index=True, sort=False)
+        self.word_count_results_df = pd.concat([self.word_count_results_df], ignore_index=True)
+        try:
+            self.word_count_results_df.to_csv("word-counts.csv", index=False)
+            print("create successful CSV-file: word-counts.csv")
+        except Exception as e:
+            print(f"Error creating CSV-file: {e}")
 
     def get_feedback_ids(self, collection, issue_key):
         feedback_data = []
@@ -89,6 +164,7 @@ class MetricsCalculator:
     def calculate_f1_score(self, precision, recall):
         return 2 * ((precision * recall) / (precision + recall)) if (precision + recall) > 0 else 0
 
+    # calculates the metrics for the standard approach and exports them into a csv
     def calculate_metrics(self, name):
         issue_keys_set = self.get_issue_keys_set()
 
@@ -148,6 +224,7 @@ class MetricsCalculator:
         except Exception as e:
             print(f"Error creating CSV-file: {e}")
 
+    # calculates the metrics for the different number of relations and exports them into a csv
     def calculate_metrics_for_top_x(self, name, num):
         issue_keys_set = self.get_issue_keys_set()
 
@@ -207,6 +284,7 @@ class MetricsCalculator:
         except Exception as e:
             print(f"Error creating CSV-file: {e}")
 
+    # calculates the metrics for the different length of requirement descriptions and exports them into a csv
     def calculate_metrics_for_str_length(self, name, max, min):
         issue_keys_set = self.get_issue_keys_set_string_length_filter(max, min)
 
@@ -282,8 +360,12 @@ class MetricsCalculator:
 
 
 if __name__ == '__main__':
-    calculator = MetricsCalculator(collection_saved_data, collection_assigned_feedback_with_tore,
-                                   collection_jira_issues, collection_imported_feedback)
-    calculator.calculate_metrics(str(max))
-    calculator.calculate_metrics_for_str_length(str(max), 40, 0)
-    calculator.calculate_metrics_for_top_x(str(max), 1)
+    calculator = MetricsCalculator(collection_saved_data, collection_assigned_feedback, collection_jira_issues,
+                                   collection_imported_feedback)
+    calculator.get_TORE_assigned_requirement_types()
+    # calculator.get_avg_description_length()
+    # calculator = MetricsCalculator(collection_saved_data, collection_assigned_feedback_with_tore,
+    #                                collection_jira_issues, collection_imported_feedback)
+    # calculator.calculate_metrics(str(max))
+    # calculator.calculate_metrics_for_str_length(str(max), 40, 0)
+    # calculator.calculate_metrics_for_top_x(str(max), 1)
