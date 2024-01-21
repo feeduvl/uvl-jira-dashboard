@@ -10,7 +10,7 @@ services:
     build: ./
     container_name: flask-app
     ports:
-      - "9648:9648"
+      - "9647:9647"
     environment:
       - MONGO_URI=mongodb://mongodb:27017/mongo
 
