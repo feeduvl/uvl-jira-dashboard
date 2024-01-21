@@ -9,4 +9,4 @@ RUN python -m spacy download en_core_web_sm
 
 COPY . .
 
-CMD ["python", "app.py", "--host", "0.0.0.0", "--port", "9647"]
+CMD ["python", "app.py", "--host", "0.0.0.0", "--port", "9648"]

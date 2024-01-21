@@ -14,4 +14,4 @@ app.register_blueprint(jira_issue_bp, url_prefix='/hitec/jira/issues')
 app.register_blueprint(issue_feedback_relation_bp, url_prefix='/hitec/jira/issue_feedback')
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=9648)
+    app.run(host='0.0.0.0', port=9648)
