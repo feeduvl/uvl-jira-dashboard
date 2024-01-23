@@ -362,10 +362,10 @@ class MetricsCalculator:
 if __name__ == '__main__':
     calculator = MetricsCalculator(collection_saved_data, collection_assigned_feedback, collection_jira_issues,
                                    collection_imported_feedback)
-    calculator.get_TORE_assigned_requirement_types()
+    # calculator.get_TORE_assigned_requirement_types()
     # calculator.get_avg_description_length()
     # calculator = MetricsCalculator(collection_saved_data, collection_assigned_feedback_with_tore,
     #                                collection_jira_issues, collection_imported_feedback)
     # calculator.calculate_metrics(str(max))
-    # calculator.calculate_metrics_for_str_length(str(max), 40, 0)
-    # calculator.calculate_metrics_for_top_x(str(max), 1)
+    # calculator.calculate_metrics_for_str_length(str(maxNumber), maxNumber, minNumber)
+    # calculator.calculate_metrics_for_top_x(str(max), n)
