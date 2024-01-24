@@ -17,15 +17,17 @@ def get_issues_without_assigned_elements():
     # find all requirements
     for issue in collection_jira_issues.find({}):
         issues = issue.get('issues', [])
-        # find the requirements that are related to a feedback (standard or using TORE)
-        for individual_issue in issues:
-            issue_key = individual_issue.get('key')
+        is_selected = issue.get("selectedToAssign")
+        if is_selected:
+            # find the requirements that are related to a feedback (standard or using TORE)
+            for individual_issue in issues:
+                issue_key = individual_issue.get('key')
 
-            assigned_issue = collection_assigned_feedback.find_one({'issue_key': issue_key})
-            tore_issue = collection_assigned_feedback_with_tore.find_one({'issue_key': issue_key})
-            # get all requirements that are not related
-            if not assigned_issue and not tore_issue:
-                unassigned_issues.append(individual_issue)
+                assigned_issue = collection_assigned_feedback.find_one({'issue_key': issue_key})
+                tore_issue = collection_assigned_feedback_with_tore.find_one({'issue_key': issue_key})
+                # get all requirements that are not related
+                if not assigned_issue and not tore_issue:
+                    unassigned_issues.append(individual_issue)
 
     page = int(request.args.get('page', default=1))
     size = int(request.args.get('size', default=-1))
