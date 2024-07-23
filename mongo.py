@@ -15,9 +15,8 @@ class MongoDB:
         # Datenbank und Sammlungen initialisieren
         self.db_issues = self.client["jira_dashboard"]
         self.collection_jira_issues = self.db_issues["jira_issue"]
-        self.collection_imported_feedback = self.db_issues["imported_feedback"]
+        #self.collection_imported_feedback = self.db_issues["imported_feedback"]
         self.collection_assigned_feedback = self.db_issues["assigned_feedback"]
-        self.collection_assigned_feedback_with_tore = self.db_issues["assigned_feedback_with_tore"]
         self.collection_saved_data = self.db_issues["saved_data"]
 
         self.db_feedback = self.client["concepts_data"]

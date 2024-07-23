@@ -6,7 +6,6 @@ from mongo import mongo_db
 
 collection_jira_issues = mongo_db.collection_jira_issues
 collection_assigned_feedback = mongo_db.collection_assigned_feedback
-collection_assigned_feedback_with_tore = mongo_db.collection_assigned_feedback_with_tore
 
 jira_issue_bp = Blueprint('jira_issue', __name__)
 
@@ -24,9 +23,8 @@ def get_issues_without_assigned_elements():
                 issue_key = individual_issue.get('key')
 
                 assigned_issue = collection_assigned_feedback.find_one({'issue_key': issue_key})
-                tore_issue = collection_assigned_feedback_with_tore.find_one({'issue_key': issue_key})
                 # get all requirements that are not related
-                if not assigned_issue and not tore_issue:
+                if not assigned_issue:
                     unassigned_issues.append(individual_issue)
 
     page = int(request.args.get('page', default=1))
@@ -81,39 +79,6 @@ def get_unassigned_issues(feedback_id):
     return jsonify(response)
 
 
-@jira_issue_bp.route('/get_tore_unassigned_issues/<feedback_id>', methods=['GET'])
-def get_tore_unassigned_issues(feedback_id):
-    # find all requirements that are assinged using TORE
-    assigned_issues = list(collection_assigned_feedback_with_tore.find({'feedback_id': feedback_id}))
-    issue_keys = set(feedback['issue_key'] for feedback in assigned_issues)
-    # find all requirements that are not assigned using TORE
-    missing_issues = []
-    for jira_entry in collection_jira_issues.find({}):
-        for issue in jira_entry.get('issues', []):
-            if issue['key'] not in issue_keys:
-                missing_issues.append(issue)
-
-    page = int(request.args.get('page', default=1))
-    size = int(request.args.get('size', default=-1))
-
-    if size == -1:
-        size = len(missing_issues)
-
-    start_index = (page - 1) * size
-    end_index = min(start_index + size, len(missing_issues))
-
-    paginated_missing_issues = missing_issues[start_index:end_index]
-
-    response = {
-        "missing_issues": paginated_missing_issues,
-        "currentPage": page,
-        "totalItems": len(missing_issues),
-        "totalPages": (len(missing_issues) + size - 1) // size
-    }
-
-    return jsonify(response)
-
-
 @jira_issue_bp.route('/delete_project/<project_name>', methods=['DELETE'])
 def delete_project(project_name):
     # find all requirements of the chosen project
@@ -121,7 +86,6 @@ def delete_project(project_name):
                   for issue in project.get('issues', []) if 'key' in issue]
     # delete all assignments of the requirements
     collection_assigned_feedback.delete_many({'issue_key': {'$in': issue_keys}})
-    collection_assigned_feedback_with_tore.delete_many({'issue_key': {'$in': issue_keys}})
     # delete the project name
     result = collection_jira_issues.delete_one({'projectName': project_name})
     if result.deleted_count > 0:
@@ -134,7 +98,6 @@ def delete_project(project_name):
 def delete_issue(project_name, key):
     # delete all assigned elements that are assigned to the chosen requirement
     collection_assigned_feedback.delete_many({'issue_key': key})
-    collection_assigned_feedback_with_tore.delete_many({'issue_key': key})
     # find the requirement through the project name
     projects = collection_jira_issues.find({'projectName': project_name})
     for project in projects:
@@ -205,66 +168,10 @@ def get_assigned_issues(feedback_id):
     return jsonify(response)
 
 
-@jira_issue_bp.route('/get_tore_assigned_issues/<feedback_id>', methods=['GET'])
-def get_tore_assigned_issues(feedback_id):
-    # find all requiements that are assigned to feedback through TORE and sort them
-    assigned_issues = list(collection_assigned_feedback_with_tore.find({'feedback_id': feedback_id}))
-    assigned_issues = sorted(assigned_issues, key=lambda x: x.get('similarity', 0), reverse=True)
-    issue_keys = [issue['issue_key'] for issue in assigned_issues]
-    project_names = set(issue['project_name'] for issue in assigned_issues)
-    related_issues = []
-    # iterate through all requirements by project name
-    for project_name in project_names:
-        project = collection_jira_issues.find_one({'projectName': project_name})
-        if project:
-            issues_in_project = project.get('issues', [])
-
-            for issue in issues_in_project:
-                if issue['key'] in issue_keys:
-                    # find the assigned requirements for the chosen feedback
-                    matching_assigned_feedback = next((af for af in assigned_issues if af['issue_key'] == issue['key']),
-                                                      None)
-                    if matching_assigned_feedback:
-                        similarity = matching_assigned_feedback.get('similarity')
-                    else:
-                        similarity = None
-                    related_issue = {
-                        'key': issue['key'],
-                        'summary': issue['summary'],
-                        'description': issue['description'],
-                        'similarity': similarity
-                    }
-                    related_issues.append(related_issue)
-    sorted_issues = sorted(related_issues,
-                           key=lambda x: float(x["similarity"]) if x["similarity"].replace('.', '',
-                                                                                           1).isdigit() else float(
-                               'inf'), reverse=True)
-    page = int(request.args.get('page', default=1))
-    size = int(request.args.get('size', default=-1))
-
-    if size == -1:
-        size = len(sorted_issues)
-
-    start_index = (page - 1) * size
-    end_index = min(start_index + size, len(sorted_issues))
-
-    paginated_related_issues = sorted_issues[start_index:end_index]
-
-    response = {
-        "related_issues": paginated_related_issues,
-        "currentPage": page,
-        "totalItems": len(sorted_issues),
-        "totalPages": (len(sorted_issues) + size - 1) // size
-    }
-
-    return jsonify(response)
-
-
 @jira_issue_bp.route("/remove_all_issues", methods=["DELETE"])
 def remove_all_issues():
     # delete all requirements and the assignments
     collection_assigned_feedback.delete_many({})
-    collection_assigned_feedback_with_tore.delete_many({})
     collection_jira_issues.delete_many({})
     return jsonify({"message": "removed successfully"})
 

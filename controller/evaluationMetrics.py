@@ -6,7 +6,6 @@ from mongo import mongo_db
 nltk.download('punkt')
 collection_jira_issues = mongo_db.collection_jira_issues
 collection_assigned_feedback = mongo_db.collection_assigned_feedback
-collection_assigned_feedback_with_tore = mongo_db.collection_assigned_feedback_with_tore
 collection_saved_data = mongo_db.collection_saved_data
 collection_imported_feedback = mongo_db.collection_imported_feedback
 
@@ -22,8 +21,6 @@ class MetricsCalculator:
         self.feedback_collection = feedback_collection
         self.results_df = pd.DataFrame(columns=["Issue Key", "Recall", "Precision", "F1-Score"])
         self.word_count_results_df = pd.DataFrame(columns=["Issue Key", "Description", "Word Count"])
-        self.feedback_TORE_categories_results_df = pd.DataFrame(
-            columns=['User Task', 'User Subtask', 'Workspace', 'System Function'])
 
     def get_issue_keys_set(self):
         jira_keys_set = set()
@@ -34,55 +31,6 @@ class MetricsCalculator:
                 if key:
                     jira_keys_set.add(key)
         return list(jira_keys_set)
-
-    # To see how much feedback is still available per requirement type after the TORE pre-classification
-    def get_TORE_assigned_requirement_types(self):
-        categories = ['User Task', 'User Subtask', 'Workspace', 'System Function']
-        ut_count = 0
-        st_count = 0
-        sf_count = 0
-        ws_count = 0
-        for data in self.feedback_collection.find({}):
-            for feedback in data.get("feedback", []):
-                fb_id = feedback.get("id")
-                usertask = ""
-                subtask = ""
-                systemfunction = ""
-                workspace = ""
-                for tore in feedback.get("tore", []):
-                    for category in categories:
-                        if category in tore:
-                            if category == 'User Task':
-                                usertask = fb_id
-                                ut_count += 1
-                            if category == 'User Subtask':
-                                subtask = fb_id
-                                st_count += 1
-                            if category == 'Workspace':
-                                workspace = fb_id
-                                ws_count += 1
-                            if category == 'System Function':
-                                systemfunction = fb_id
-                                sf_count += 1
-                self.feedback_TORE_categories_results_df = pd.concat(
-                    [self.feedback_TORE_categories_results_df, pd.DataFrame(
-                        {"User Task": [usertask], "User Subtask": [subtask], "Workspace": [workspace],
-                         "System Function": [systemfunction]})],
-                    ignore_index=True, sort=False)
-            avg_df = pd.DataFrame({
-                "User Task": [ut_count],
-                "User Subtask": [st_count],
-                "Workspace": [ws_count],
-                "System Function": [sf_count]
-            })
-            self.feedback_TORE_categories_results_df = pd.concat([self.feedback_TORE_categories_results_df, avg_df],
-                                                                 ignore_index=True)
-
-            try:
-                self.feedback_TORE_categories_results_df.to_csv("feedbackToreCategories1.csv", index=False)
-                print("create successful CSV-file: feedbackToreCategories1.csv")
-            except Exception as e:
-                print(f"Error creating CSV-file: {e}")
 
     # Specifies the requirements with different text lengths for evaluation with different
     # lengths of requirements

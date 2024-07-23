@@ -11,8 +11,7 @@ from mongo import mongo_db
 
 collection_jira_issues = mongo_db.collection_jira_issues
 collection_assigned_feedback = mongo_db.collection_assigned_feedback
-collection_assigned_feedback_with_tore = mongo_db.collection_assigned_feedback_with_tore
-collection_imported_feedback = mongo_db.collection_imported_feedback
+collection_feedback = mongo_db.collection_feedback
 collection_saved_data = mongo_db.collection_saved_data
 # load spacy library
 nlp = spacy.load("en_core_web_sm")
@@ -41,65 +40,10 @@ def get_unique_names():
     return jsonify(list(unique_names))
 
 
-@issue_feedback_relation_bp.route('/restore_data/<name>', methods=['GET'])
-def restore_data(name):
-    saved_data = collection_saved_data.find_one({'name': name})
-    # load the saved data and overwrite the existing
-    if saved_data:
-        data_imported_feedback = saved_data['imported_feedback']
-        data_jira_issues = saved_data['jira_issues']
-        data_assigned_feedback = saved_data['assigned_feedback']
-        data_tore_assigned_feedback = saved_data['tore_assigned_feedback']
-
-        collection_imported_feedback.delete_many({})
-        collection_jira_issues.delete_many({})
-        collection_assigned_feedback.delete_many({})
-        collection_assigned_feedback_with_tore.delete_many({})
-        # overwrite existing feedback
-        for item in data_imported_feedback:
-            collection_imported_feedback.insert_one(item)
-        # overwrite existing requirements
-        for item in data_jira_issues:
-            collection_jira_issues.insert_one(item)
-        # overwrite existing feedback to requirements relation
-        for item in data_assigned_feedback:
-            collection_assigned_feedback.insert_one(item)
-        # overwrite existing feedback requirements relation using TORE
-        for item in data_tore_assigned_feedback:
-            collection_assigned_feedback_with_tore.insert_one(item)
-
-        return jsonify({'message': 'restored successful.'})
-    else:
-        return jsonify({'error': 'dataset not found.'}), 400
-
-
-@issue_feedback_relation_bp.route('/save_data/<name>', methods=['POST'])
-def save_data(name):
-    if collection_saved_data.find_one({'name': name}):
-        return jsonify({'error': 'Name already exists!'}), 400
-    # save the existing data
-    data_imported_feedback = list(collection_imported_feedback.find())
-    data_jira_issues = list(collection_jira_issues.find())
-    data_assigned_feedback = list(collection_assigned_feedback.find())
-    data_tore_assigned_feedback = list(collection_assigned_feedback_with_tore.find())
-
-    combined_data = {
-        'name': name,
-        'imported_feedback': data_imported_feedback,
-        'jira_issues': data_jira_issues,
-        'assigned_feedback': data_assigned_feedback,
-        'tore_assigned_feedback': data_tore_assigned_feedback
-    }
-
-    collection_saved_data.insert_one(combined_data)
-
-    return jsonify({'message': 'Saved successfully'})
-
-
 @issue_feedback_relation_bp.route('/get_data_to_export/<feedback_name>', methods=['GET'])
 def get_data_to_export(feedback_name):
     # get imported feedback
-    feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
+    feedback_document = collection_saved_data.find_one({"dataset": feedback_name})
     imported_feedback = feedback_document.get("feedback", [])
     # find all assigned elements
     assigned_feedback_documents = collection_assigned_feedback.find({})
@@ -155,65 +99,6 @@ def get_data_to_export(feedback_name):
     return jsonify(combined_data)
 
 
-@issue_feedback_relation_bp.route('/get_data_tore_to_export/<feedback_name>', methods=['GET'])
-def get_data_tore_to_export(feedback_name):
-    # get imported feedback
-    feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
-    imported_feedback = feedback_document.get("feedback", [])
-    # find all assigned elements
-    assigned_feedback_documents = collection_assigned_feedback_with_tore.find({})
-    # iterate through feedback and find assigned feedback
-    unique_issue_keys_with_feedback_ids = {}
-    for document in assigned_feedback_documents:
-        issue_key = document['issue_key']
-        feedback_id = document['feedback_id']
-        if issue_key not in unique_issue_keys_with_feedback_ids:
-            unique_issue_keys_with_feedback_ids[issue_key] = []
-        # add every assigned feedback id for each requirement
-        unique_issue_keys_with_feedback_ids[issue_key].append(feedback_id)
-
-    issue_info = {}
-    for issue_key in unique_issue_keys_with_feedback_ids:
-        # find requirements that are assigned to get the summary und description
-        issue_data = collection_jira_issues.find_one({'issues.key': issue_key})
-        if issue_data:
-            issue_summary = None
-            issue_description = None
-            for issue in issue_data.get('issues', []):
-                if issue['key'] == issue_key:
-                    issue_summary = issue['summary']
-                    issue_description = issue['description']
-                    issue_description = re.sub(r'[^a-zA-Z0-9.,: ]', '', issue_description)
-                    break
-            if issue_summary is not None and issue_description is not None:
-                issue_info[issue_key] = {
-                    'issue_key': issue_key,
-                    'issue_summary': issue_summary,
-                    'issue_description': issue_description,
-                    'feedback_data': []
-                }
-    feedback_info = {}
-    # find feedback to get the id und text
-    for document in imported_feedback:
-        feedback_id = document['id']
-        feedback_text = document['text']
-        feedback_text = re.sub(r'[^a-zA-Z0-9.,: ]', '', feedback_text)
-        feedback_info[feedback_id] = feedback_text
-    # combine feedback and requirements
-    for issue_key, feedback_ids in unique_issue_keys_with_feedback_ids.items():
-        if issue_key in issue_info:
-            feedback_data = issue_info[issue_key]['feedback_data']
-            # add feedback id and text for each requirement
-            for feedback_id in feedback_ids:
-                if feedback_id in feedback_info:
-                    feedback_text = feedback_info[feedback_id]
-                    feedback_data.append({'feedback_id': feedback_id, 'feedback_text': feedback_text})
-
-    combined_data = list(issue_info.values())
-
-    return jsonify(combined_data)
-
-
 @issue_feedback_relation_bp.route('/add_feedback_to_issue', methods=['POST'])
 def add_feedback_to_issue():
     data = request.get_json()
@@ -234,28 +119,6 @@ def add_feedback_to_issue():
     return jsonify(
         {"message": "Feedback relations added successfully"})
 
-
-@issue_feedback_relation_bp.route('/add_tore_feedback_to_issue', methods=['POST'])
-def add_tore_feedback_to_issue():
-    data = request.get_json()
-    issue_key = data.get('issue_key')
-    project_name = data.get('projectName')
-    selected_feedback = data['selected_feedback']
-    # iterate through the selected feedback
-    for feedback_obj in selected_feedback:
-        feedback_id = feedback_obj.get('id')
-        # add the requirement to feedback and relate them for manual TORE assignment
-        new_relation = {
-            'project_name': project_name,
-            'issue_key': issue_key,
-            'feedback_id': feedback_id,
-            'similarity': "Manually inserted"
-        }
-
-        collection_assigned_feedback_with_tore.insert_one(new_relation)
-
-    return jsonify(
-        {"message": "Feedback relations added successfully"})
 
 
 @issue_feedback_relation_bp.route('/add_issue_to_feedback', methods=['POST'])
@@ -280,26 +143,6 @@ def add_issue_to_feedback():
         {"message": "Feedback relations added successfully"})
 
 
-@issue_feedback_relation_bp.route('/add_issue_to_tore_feedback', methods=['POST'])
-def add_issue_to_tore_feedback():
-    data = request.get_json()
-    feedback_id = data.get('feedback_id')
-    selected_issues = data['selected_issues']
-    # iterate through the selected requirements
-    for issue_obj in selected_issues:
-        issue_key = issue_obj.get('key')
-        project_name = issue_obj.get('projectName')
-        # add the requirement to feedback and relate them for manual TORE assignment
-        new_relation = {
-            'project_name': project_name,
-            'issue_key': issue_key,
-            'feedback_id': feedback_id,
-            'similarity': "Manually inserted"
-        }
-        collection_assigned_feedback_with_tore.insert_one(new_relation)
-    return jsonify(
-        {"message": "Feedback relations added successfully"})
-
 
 @issue_feedback_relation_bp.route('/delete_feedback/<issue_key>/<feedback_id>', methods=['DELETE'])
 def delete_feedback_from_issue(issue_key, feedback_id):
@@ -307,12 +150,6 @@ def delete_feedback_from_issue(issue_key, feedback_id):
     collection_assigned_feedback.delete_one({'issue_key': issue_key, 'feedback_id': feedback_id})
     return jsonify({"message": "Feedback deleted successfully"})
 
-
-@issue_feedback_relation_bp.route('/delete_tore_feedback/<issue_key>/<feedback_id>', methods=['DELETE'])
-def delete_tore_feedback_from_issue(issue_key, feedback_id):
-    # delete one feedback the is related to one requirement using TORE
-    collection_assigned_feedback_with_tore.delete_one({'issue_key': issue_key, 'feedback_id': feedback_id})
-    return jsonify({"message": "Feedback deleted successfully"})
 
 
 @issue_feedback_relation_bp.route('/delete_assigned_feedback_for_issue/<issue_key>', methods=['DELETE'])
@@ -322,12 +159,6 @@ def delete_assigned_feedback_for_issue(issue_key):
     return jsonify({'error': 'Feedback deleted'})
 
 
-@issue_feedback_relation_bp.route('/delete_tore_assigned_feedback_for_issue/<issue_key>', methods=['DELETE'])
-def delete_tore_assigned_feedback_for_issue(issue_key):
-    # delete all feedback that are related using TORE to the chosen requirement
-    collection_assigned_feedback_with_tore.delete_many({'issue_key': issue_key})
-    return jsonify({'error': 'Feedback deleted'})
-
 
 @issue_feedback_relation_bp.route('/delete_assigned_issues_for_feedback/<feedback_id>', methods=['DELETE'])
 def delete_assigned_issues_for_feedback(feedback_id):
@@ -335,12 +166,6 @@ def delete_assigned_issues_for_feedback(feedback_id):
     collection_assigned_feedback.delete_many({'feedback_id': feedback_id})
     return jsonify({'error': 'Feedback deleted'})
 
-
-@issue_feedback_relation_bp.route('/delete_tore_assigned_issues_for_feedback/<feedback_id>', methods=['DELETE'])
-def delete_tore_assigned_issues_for_feedback(feedback_id):
-    # delete all requirements that are related using TORE to the chosen feedback
-    collection_assigned_feedback_with_tore.delete_many({'feedback_id': feedback_id})
-    return jsonify({'error': 'Feedback deleted'})
 
 # embdding without using spaCy
 def get_embeddings_without_spacy(text):
@@ -439,7 +264,7 @@ def assign_feedback_to_issues(feedback_name, max_similarity_value):
 
 
 def calculate_feedback_embedding(feedback_name):
-    feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
+    feedback_document = collection_feedback.find_one({"dataset": feedback_name})
     feedback_array = feedback_document.get("feedback", [])
     feedback_embeddings = []
     # iterate through all feedback and calculate embedding of each one
@@ -452,51 +277,3 @@ def calculate_feedback_embedding(feedback_name):
         }
         feedback_embeddings.append(feedback_embedding)
     return feedback_embeddings
-
-
-@issue_feedback_relation_bp.route('/assign_feedback_to_issues_by_tore/<feedback_name>/<max_similarity_value>',
-                                  methods=['POST'])
-def assign_feedback_to_issues_by_tore(feedback_name, max_similarity_value):
-    max_similarity_value = float(max_similarity_value)
-    # delete all assignments to create new
-    collection_assigned_feedback_with_tore.delete_many({})
-    feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
-    feedback_array = feedback_document.get("feedback", [])
-    jira_collection = list(collection_jira_issues.find({}))
-    # calculate embeddings for all feedback
-    feedback_embeddings = calculate_feedback_embedding(feedback_name)
-    for project in jira_collection:
-        # find requirements that are chosen for assignment
-        is_selected = project.get("selectedToAssign")
-        if is_selected:
-            project_issues = project.get("issues", [])
-            for issue in project_issues:
-                issue_type = issue.get('issueType')
-                summary = issue.get("summary")
-                description = issue.get("description")
-                issue_text = summary
-                # combine summary and description
-                if description is not None:
-                    issue_text = summary + ": " + description
-                # calculate embedding for requirement
-                summary_embedding = get_embeddings(issue_text)
-                # iterate through feedback and if requirement type is classified, calculate similarity
-                for feedback in feedback_array:
-                    assigned_tore = feedback.get('tore', [])
-                    for tore in assigned_tore:
-                        if issue_type == tore:
-                            # get calculated embedding for TORE pre-classified feedback
-                            matching_feedback = next((embedding['embedding'] for embedding in feedback_embeddings
-                                                      if embedding.get('feedback_id') == feedback.get('id')), None)
-                            # calculate cosine similarity
-                            similarity = cosine_similarity([summary_embedding], [matching_feedback])[0][0]
-                            # check if similarity is over threshold and save it
-                            if similarity > max_similarity_value:
-                                assigned_feedback_with_tore = {
-                                    'feedback_id': feedback.get('id'),
-                                    "issue_key": issue["key"],
-                                    "project_name": issue["projectName"],
-                                    "similarity": str(round(float(similarity), 3)),
-                                }
-                                collection_assigned_feedback_with_tore.insert_one(assigned_feedback_with_tore)
-    return jsonify({'message': 'assignment was successful'})
