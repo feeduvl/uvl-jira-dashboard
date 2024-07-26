@@ -14,7 +14,7 @@ feedback_bp = Blueprint('feedback', __name__)
 def get_issues_without_assigned_elements(feedback_name):
     unassigned_feedback = []
     # find all feedback of the used feedback dataset by name
-    feedback_document = collection_feedback.find_one({"dataset": feedback_name})
+    feedback_document = collection_feedback.find_one({"name": feedback_name})
     # get the feedback array of the dataset with all feedback texts
     feedback_collection = feedback_document.get("feedback", [])
     # iterate through all feedback and find the ones who were not assigned via standard or TORE
@@ -50,12 +50,12 @@ def get_issues_without_assigned_elements(feedback_name):
 def load_feedback(feedback_name):
     try:
         # get chosen feedback dataset
-        selected_document = collection_feedback.find_one({"dataset": feedback_name})
+        selected_document = collection_feedback.find_one({"name": feedback_name})
         # if the feedback already found, then return
         if selected_document:
             return jsonify({"message": "found feedback"})
         # if the feedback not in collection, get it from the collection of all available feedback datasets
-        else:
+        else: #TODO: Eigentlich dürfte dieser Fall nie mehr auftreten
             # find chosen feedback dataset in all available datasets
             feedback = collection_feedback.find_one({"name": feedback_name})
             ids_and_texts = []
@@ -74,8 +74,8 @@ def load_feedback(feedback_name):
                 }
                 ids_and_texts.append(id_and_text)
             imported_feedback = {
-                'dataset': feedback_name,
-                'feedback': ids_and_texts
+                'name': feedback_name,
+                'documents': ids_and_texts
             }
             # save the new feedback dataset in collection
             collection_feedback.insert_one(imported_feedback)
@@ -88,7 +88,7 @@ def load_feedback(feedback_name):
 def get_feedback():
     # get feedback to show in table with pagination
     feedback_name = request.args.get("selectedFeedbackFileName")
-    feedback_document = collection_feedback.find_one({"dataset": feedback_name})
+    feedback_document = collection_feedback.find_one({"name": feedback_name})
     if feedback_name and feedback_document:
         try:
             feedback_array = feedback_document.get("feedback", [])
@@ -209,7 +209,7 @@ def get_unassigned_feedback(issue_key, feedback_name):
     # get all feedback ids that are assigned to a specific requirement
     assigned_feedback_ids = set(
         item['feedback_id'] for item in collection_assigned_feedback.find({'issue_key': issue_key}, {'feedback_id': 1}))
-    feedback_document = collection_feedback.find_one({"dataset": feedback_name})
+    feedback_document = collection_feedback.find_one({"name": feedback_name})
     feedback_array = feedback_document.get("feedback", [])
     unassigned_feedback = []
     # get all feedback that is not assigned to the requirement
@@ -245,7 +245,7 @@ def delete_feedback(feedback_id, feedback_name):
     # delete all assigned elements of the feedback
     collection_assigned_feedback.delete_many({'feedback_id': feedback_id})
     # find the feedback dataset and remove it from this collection
-    feedback_document = collection_feedback.find_one({"dataset": feedback_name})
+    feedback_document = collection_feedback.find_one({"name": feedback_name})
     feedback_array = feedback_document.get("feedback", [])
     updated_feedback = [feedback for feedback in feedback_array if feedback['id'] != feedback_id]
     collection_feedback.update_one({'_id': feedback_document['_id']}, {'$set': {'feedback': updated_feedback}})
@@ -258,7 +258,7 @@ def delete_all_feedback(feedback_name):
     # delete all relations
     collection_assigned_feedback.delete_many({})
     # remove all feedback from this collection
-    feedback_document = collection_feedback.find_one({"dataset": feedback_name})
+    feedback_document = collection_feedback.find_one({"name": feedback_name})
     if feedback_document:
         collection_feedback.delete_one({"_id": feedback_document["_id"]})
         return jsonify({"message": "Feedback deleted."})
