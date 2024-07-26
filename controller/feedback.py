@@ -136,7 +136,7 @@ def get_feedback():
 def get_feedback_names():
     # find all feedback names in all available feedback datasets
     feedback = collection_feedback.find({})
-    logging.error(collection_feedback.find({}, {name:1})
+    logging.error(collection_feedback.find({})
     names_list = [doc["name"] for doc in feedback]
     return names_list
 
