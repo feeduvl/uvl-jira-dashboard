@@ -5,7 +5,6 @@ from mongo import mongo_db
 
 collection_feedback = mongo_db.collection_feedback
 collection_assigned_feedback = mongo_db.collection_assigned_feedback
-collection_feedback = mongo_db.collection_feedback
 collection_annotations = mongo_db.collection_annotations
 
 feedback_bp = Blueprint('feedback', __name__)
@@ -137,7 +136,7 @@ def get_feedback():
 def get_feedback_names():
     # find all feedback names in all available feedback datasets
     feedback = collection_feedback.find({})
-    logging.error(feedback)
+    logging.error(feedback[0])
     names_list = [doc["name"] for doc in feedback]
     return names_list
 
