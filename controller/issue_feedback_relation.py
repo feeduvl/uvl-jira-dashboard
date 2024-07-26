@@ -8,6 +8,7 @@ import spacy
 import re
 import numpy as np
 from mongo import mongo_db
+import logging
 
 collection_jira_issues = mongo_db.collection_jira_issues
 collection_assigned_feedback = mongo_db.collection_assigned_feedback
@@ -267,6 +268,7 @@ def assign_feedback_to_issues(feedback_name, max_similarity_value):
 def assign_many_feedback_to_issues(max_similarity_value):
     feedback_list = request.get_json().get('datasets')
     print(feedback_list)
+    logging.info(feedback_list)
     max_similarity_value = float(max_similarity_value)
     # delete all assignments to create new
     collection_assigned_feedback.delete_many({})
@@ -275,6 +277,7 @@ def assign_many_feedback_to_issues(max_similarity_value):
     #feedback_list = feedback_name.split(",")
     all_feedback_embeddings = []
     for feedback_item in feedback_list:
+        logging.info(feedback_item)
         feedback_embeddings = calculate_feedback_embedding(feedback_item)
         all_feedback_embeddings.append(feedback_embeddings)
     for project in jira_collection:
