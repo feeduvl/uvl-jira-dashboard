@@ -1,5 +1,6 @@
 from flask import jsonify, Blueprint, request
 import re
+import logging
 from mongo import mongo_db
 
 collection_feedback = mongo_db.collection_feedback
