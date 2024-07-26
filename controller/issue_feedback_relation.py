@@ -265,7 +265,7 @@ def assign_feedback_to_issues(feedback_name, max_similarity_value):
 
 @issue_feedback_relation_bp.route('/assign_many_feedback_to_issues/<max_similarity_value>', methods=['POST'])
 def assign_many_feedback_to_issues(max_similarity_value):
-    feedback_list = request.json.get('datasets')
+    feedback_list = request.get_json().get('datasets')
     print(feedback_list)
     max_similarity_value = float(max_similarity_value)
     # delete all assignments to create new
@@ -275,7 +275,7 @@ def assign_many_feedback_to_issues(max_similarity_value):
     #feedback_list = feedback_name.split(",")
     all_feedback_embeddings = []
     for feedback_item in feedback_list:
-        feedback_embeddings = calculate_feedback_embedding(feedback_name)
+        feedback_embeddings = calculate_feedback_embedding(feedback_item)
         all_feedback_embeddings.append(feedback_embeddings)
     for project in jira_collection:
         # find requirements that are chosen for assignment
