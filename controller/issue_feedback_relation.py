@@ -296,6 +296,7 @@ def assign_many_feedback_to_issues(max_similarity_value):
                 # calculate embedding for requirement
                 summary_embedding = get_embeddings(issue_text)
                 similarities = []
+                logging.error(all_feedback_embeddings)
                 for embedded_feedback in all_feedback_embeddings:
                     # calculate cosine similarity for each feedback and requirement
                     logging.error(embedded_feedback)
