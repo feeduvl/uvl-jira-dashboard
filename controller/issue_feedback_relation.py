@@ -311,7 +311,9 @@ def assign_many_feedback_to_issues(max_similarity_value):
     return jsonify({'message': 'assignment was successful'})
 
 def calculate_feedback_embedding(feedback_name):
-    feedback_document = collection_feedback.find_one({"dataset": feedback_name})
+    logging.error(feedback_name)
+    feedback_document = collection_feedback.find_one({"name": feedback_name})
+    logging.error(feedback_document)
     feedback_array = feedback_document.get("feedback", [])
     feedback_embeddings = []
     # iterate through all feedback and calculate embedding of each one
