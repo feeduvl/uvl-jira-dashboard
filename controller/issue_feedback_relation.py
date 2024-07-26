@@ -250,6 +250,7 @@ def assign_feedback_to_issues(feedback_name, max_similarity_value):
                 similarities = []
                 for embedded_feedback in feedback_embeddings:
                     # calculate cosine similarity for each feedback and requirement
+                    logging.error(embedded_feedback)
                     similarity = cosine_similarity([summary_embedding], [embedded_feedback.get('embedding')])[0][0]
                     # if similarity is over threshold (max_similarity_value) add it to list of assigned elements
                     if similarity > max_similarity_value:
@@ -297,6 +298,7 @@ def assign_many_feedback_to_issues(max_similarity_value):
                 similarities = []
                 for embedded_feedback in all_feedback_embeddings:
                     # calculate cosine similarity for each feedback and requirement
+                    logging.error(embedded_feedback)
                     similarity = cosine_similarity([summary_embedding], [embedded_feedback.get('embedding')])[0][0]
                     # if similarity is over threshold (max_similarity_value) add it to list of assigned elements
                     if similarity > max_similarity_value:
