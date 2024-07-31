@@ -12,6 +12,7 @@ import logging
 
 collection_jira_issues = mongo_db.collection_jira_issues
 collection_assigned_feedback = mongo_db.collection_assigned_feedback
+collection_imported_feedback = mongo_db.collection_imported_feedback
 collection_feedback = mongo_db.collection_feedback
 collection_saved_data = mongo_db.collection_saved_data
 # load spacy library
@@ -315,7 +316,8 @@ def assign_many_feedback_to_issues(max_similarity_value):
 
 def calculate_feedback_embedding(feedback_name):
     logging.error(feedback_name)
-    feedback_document = collection_feedback.find_one({"name": feedback_name}) #TODO: Ursprungszustand wiederherstellen und log anschauen
+    feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
+    #feedback_document = collection_feedback.find_one({"name": feedback_name}) #TODO: Ursprungszustand wiederherstellen und log anschauen
     logging.error("feedback_document")
     logging.error(feedback_document)
     feedback_array = feedback_document.get("feedback", [])
