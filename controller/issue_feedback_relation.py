@@ -315,12 +315,13 @@ def assign_many_feedback_to_issues(max_similarity_value):
 
 def calculate_feedback_embedding(feedback_name):
     logging.error(feedback_name)
-    feedback_document = collection_feedback.find_one({"name": feedback_name})
+    feedback_document = collection_feedback.find_one({"name": feedback_name}) #TODO: Ursprungszustand wiederherstellen und log anschauen
     logging.error("feedback_document")
     logging.error(feedback_document)
     feedback_array = feedback_document.get("feedback", [])
     feedback_embeddings = []
     logging.error("embeddings")
+    logging.error(feedback_array)
     # iterate through all feedback and calculate embedding of each one
     for feedback in feedback_array:
         feedback_text = feedback.get("text")
