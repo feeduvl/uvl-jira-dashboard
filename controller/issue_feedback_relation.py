@@ -320,7 +320,7 @@ def calculate_feedback_embedding(feedback_name):
     feedback_document = collection_feedback.find_one({"name": feedback_name})
     logging.error("feedback_document")
     logging.error(feedback_document)
-    feedback_array = feedback_document.get("feedback", [])
+    feedback_array = feedback_document.get("documents", [])
     feedback_embeddings = []
     logging.error("embeddings")
     logging.error(feedback_array)
@@ -329,7 +329,7 @@ def calculate_feedback_embedding(feedback_name):
         feedback_text = feedback.get("text")
         text_embedding = get_embeddings(feedback_text)
         feedback_embedding = {
-            'feedback_id': feedback.get('id'),
+            'feedback_id': feedback.get('number'),
             'embedding': text_embedding
         }
         feedback_embeddings.append(feedback_embedding)
