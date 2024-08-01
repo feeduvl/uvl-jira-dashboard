@@ -279,7 +279,7 @@ def assign_many_feedback_to_issues(max_similarity_value):
     #feedback_list = feedback_name.split(",")
     all_feedback_embeddings = []
     for feedback_item in feedback_list:
-        logging.error(feedback_item)
+        #logging.error(feedback_item)
         feedback_embeddings = calculate_feedback_embedding(feedback_item)
         all_feedback_embeddings.extend(feedback_embeddings)
     for project in jira_collection:
@@ -300,7 +300,7 @@ def assign_many_feedback_to_issues(max_similarity_value):
                 #logging.error(all_feedback_embeddings)
                 for embedded_feedback in all_feedback_embeddings:
                     # calculate cosine similarity for each feedback and requirement
-                    logging.error(embedded_feedback)
+                    #logging.error(embedded_feedback)
                     similarity = cosine_similarity([summary_embedding], [embedded_feedback.get('embedding')])[0][0]
                     # if similarity is over threshold (max_similarity_value) add it to list of assigned elements
                     if similarity > max_similarity_value:
@@ -323,7 +323,7 @@ def calculate_feedback_embedding(feedback_name):
     feedback_array = feedback_document.get("documents", [])
     feedback_embeddings = []
     logging.error("embeddings")
-    logging.error(feedback_array)
+    #logging.error(feedback_array)
     # iterate through all feedback and calculate embedding of each one
     for feedback in feedback_array:
         feedback_text = feedback.get("text")
