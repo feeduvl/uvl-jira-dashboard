@@ -277,7 +277,7 @@ def assign_many_feedback_to_issues(max_similarity_value):
     #feedback_list = feedback_name.split(",")
     all_feedback_embeddings = []
     for feedback_item in feedback_list:
-        logging.error(feedback_item)
+        #logging.error(feedback_item)
         feedback_embeddings = calculate_feedback_embedding(feedback_item)
         all_feedback_embeddings.extend(feedback_embeddings)
     logging.error("projects")
@@ -288,7 +288,7 @@ def assign_many_feedback_to_issues(max_similarity_value):
         if is_selected:
             project_issues = project.get("issues", [])
             for issue in project_issues:
-                logging.error("issue", issue)
+                #logging.error("issue", issue)
                 summary = issue.get("summary")
                 description = issue.get("description")
                 issue_text = summary
