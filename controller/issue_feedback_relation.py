@@ -288,6 +288,7 @@ def assign_many_feedback_to_issues(max_similarity_value):
         if is_selected:
             project_issues = project.get("issues", [])
             for issue in project_issues:
+                logging.error("issue", issue)
                 summary = issue.get("summary")
                 description = issue.get("description")
                 issue_text = summary
@@ -310,6 +311,7 @@ def assign_many_feedback_to_issues(max_similarity_value):
                             "project_name": issue["projectName"],
                             "similarity": str(round(float(similarity), 3)),
                         }
+                        logging.error(assigned_feedback)
                         similarities.append(assigned_feedback)
                         collection_assigned_feedback.insert_one(assigned_feedback)
     return jsonify({'message': 'assignment was successful'})
