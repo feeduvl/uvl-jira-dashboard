@@ -158,6 +158,7 @@ def get_assigned_feedback(issue_key):
         assigned_feedback = list(collection_assigned_feedback.find({'issue_key': issue_key}))
         # sort the list
         assigned_feedback = sorted(assigned_feedback, key=lambda x: x.get('similarity', 0), reverse=True)
+        print("assigned feedback: " + str(assigned_feedback))
         # filter all feedback to find those how are assigned to the requirement
         feedback_ids = [feedback['feedback_id'] for feedback in assigned_feedback]
 
@@ -171,6 +172,7 @@ def get_assigned_feedback(issue_key):
         # get feedback ids with start and end index for pagination
         for feedback_id in feedback_ids[start_index:end_index]:
             feedback = collection_feedback.find_one({'feedback.id': feedback_id})
+            print("feedback: " + str(feedback))
             if feedback:
                 feedback_array = feedback.get("feedback", [])
                 # find all feedback
