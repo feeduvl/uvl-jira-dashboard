@@ -179,7 +179,7 @@ def get_assigned_feedback(issue_key):
                 print("step 1")
                 # find all feedback
                 matching_feedback = next((fb for fb in feedback_array if fb.get('id') == feedback_id), None)
-                print("step 2")
+                print("step 2" + str(matching_feedback))
                 # find all feedback that is assigned
                 matching_assigned_feedback = next((af for af in assigned_feedback if af['feedback_id'] == feedback_id),
                                                   None)
