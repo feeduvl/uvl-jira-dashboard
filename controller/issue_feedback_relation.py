@@ -278,12 +278,12 @@ def assign_many_feedback_to_issues(max_similarity_value):
     all_feedback_embeddings = []
     print("feedback list: " + str(feedback_list))
     for feedback_item in feedback_list:
-        print("feedback item: " + str(feedback_item))
+        logging.error("feedback item: " + str(feedback_item))
         feedback_embeddings = calculate_feedback_embedding(feedback_item)
         all_feedback_embeddings.extend(feedback_embeddings)
     logging.error("projects")
     for project in jira_collection:
-        logging.error (project)
+        #logging.error (project)
         # find requirements that are chosen for assignment
         is_selected = project.get("selectedToAssign")
         if is_selected:
@@ -328,6 +328,7 @@ def calculate_feedback_embedding(feedback_name):
     #logging.error(feedback_array)
     # iterate through all feedback and calculate embedding of each one
     for feedback in feedback_array:
+        logging.error("feedback object: " + str(feedback))
         feedback_text = feedback.get("text")
         text_embedding = get_embeddings(feedback_text)
         feedback_embedding = {
