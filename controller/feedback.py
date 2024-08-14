@@ -6,6 +6,7 @@ from mongo import mongo_db
 
 collection_feedback = mongo_db.collection_feedback
 collection_assigned_feedback = mongo_db.collection_assigned_feedback
+collection_imported_feedback = mongo_db.collection_imported_feedback
 collection_annotations = mongo_db.collection_annotations
 
 feedback_bp = Blueprint('feedback', __name__)
@@ -274,4 +275,4 @@ def delete_all_feedback(feedback_name):
 
 @feedback_bp.route('/get_assigned_feedback/<issue_key>', methods=['GET'])
 def test_method(issue_key):
-    return json.dumps(collection_feedback.find_one(), default=str)
+    return json.dumps(collection_imported_feedback.find(), default=str)
