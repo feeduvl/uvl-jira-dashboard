@@ -161,17 +161,17 @@ def get_assigned_feedback(issue_key):
         print("assigned feedback: " + str(assigned_feedback))
         # filter all feedback to find those how are assigned to the requirement
         feedback_ids = [feedback['feedback_id'] for feedback in assigned_feedback]
-
+        print("feedback id list: " + str(feedback_ids))
         if size == -1:
             size = len(feedback_ids)
 
         start_index = (page - 1) * size
         end_index = min(start_index + size, len(feedback_ids))
-
+        print("start index: " + str(start_index) + " end index: " + str(end_index))
         feedbacks = []
         # get feedback ids with start and end index for pagination
         for feedback_id in feedback_ids[start_index:end_index]:
-            feedback = collection_feedback.find_one({'feedback.id': feedback_id})
+            feedback = collection_feedback.find_one({'feedback_id': feedback_id})
             print("feedback: " + str(feedback))
             if feedback:
                 feedback_array = feedback.get("feedback", [])
