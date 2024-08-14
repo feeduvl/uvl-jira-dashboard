@@ -172,7 +172,7 @@ def get_assigned_feedback(issue_key):
         # get feedback ids with start and end index for pagination
         for feedback_id in feedback_ids[start_index:end_index]:
             print("feedback collection: " + str(collection_feedback))
-            feedback = collection_feedback.find_one({'feedback_id': feedback_id})
+            feedback = collection_assigned_feedback.find_one({'feedback_id': feedback_id})
             print("feedback: " + str(feedback))
             if feedback:
                 feedback_array = feedback.get("feedback", [])
