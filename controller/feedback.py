@@ -1,5 +1,6 @@
 from flask import jsonify, Blueprint, request
 import re
+import json
 import logging
 from mongo import mongo_db
 
@@ -273,4 +274,4 @@ def delete_all_feedback(feedback_name):
 
 @feedback_bp.route('/get_assigned_feedback/<issue_key>', methods=['GET'])
 def test_method(issue_key):
-    return jsonify(collection_assigned_feedback.find_one())
+    return json.dumps(collection_assigned_feedback.find_one(), default=str)
