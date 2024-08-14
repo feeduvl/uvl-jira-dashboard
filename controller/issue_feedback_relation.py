@@ -304,7 +304,7 @@ def assign_many_feedback_to_issues(max_similarity_value):
                     similarity = cosine_similarity([summary_embedding], [embedded_feedback.get('embedding')])[0][0]
                     # if similarity is over threshold (max_similarity_value) add it to list of assigned elements
                     if similarity > max_similarity_value:
-                        print("assigned feedback: " + str(embedded_feedback))
+                        print("assigned feedback: " + str(embedded_feedback.get('feedback_id')))
                         assigned_feedback = {
                             'feedback_id': embedded_feedback.get('feedback_id'),
                             "issue_key": issue["key"],
