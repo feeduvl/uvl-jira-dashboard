@@ -203,6 +203,7 @@ def get_assigned_feedback(issue_key):
         return jsonify(response)
 
     except Exception as e:
+        print(e)
         return jsonify({"error": "Internal Server Error"}), 500
 
 
