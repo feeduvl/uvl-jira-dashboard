@@ -42,6 +42,61 @@ def get_unique_names():
     return jsonify(list(unique_names))
 
 
+@issue_feedback_relation_bp.route('/restore_data/<name>', methods=['GET'])
+def restore_data(name):
+    saved_data = collection_saved_data.find_one({'name': name})
+
+    if saved_data:
+        data_imported_feedback = saved_data['imported_feedback']
+        data_jira_issues = saved_data['jira_issues']
+        data_assigned_feedback = saved_data['assigned_feedback']
+        data_tore_assigned_feedback = saved_data['tore_assigned_feedback']
+
+        collection_imported_feedback.delete_many({})
+        collection_jira_issues.delete_many({})
+        collection_assigned_feedback.delete_many({})
+        collection_assigned_feedback_with_tore.delete_many({})
+
+        for item in data_imported_feedback:
+            collection_imported_feedback.insert_one(item)
+
+        for item in data_jira_issues:
+            collection_jira_issues.insert_one(item)
+
+        for item in data_assigned_feedback:
+            collection_assigned_feedback.insert_one(item)
+
+        for item in data_tore_assigned_feedback:
+            collection_assigned_feedback_with_tore.insert_one(item)
+
+        return jsonify({'message': 'restored successful.'})
+    else:
+        return jsonify({'error': 'dataset not found.'}), 400
+
+
+@issue_feedback_relation_bp.route('/save_data/<name>', methods=['POST'])
+def save_data(name):
+    if collection_saved_data.find_one({'name': name}):
+        return jsonify({'error': 'Name already exists!'}), 400
+
+    data_imported_feedback = list(collection_imported_feedback.find())
+    data_jira_issues = list(collection_jira_issues.find())
+    data_assigned_feedback = list(collection_assigned_feedback.find())
+    data_tore_assigned_feedback = list(collection_assigned_feedback_with_tore.find())
+
+    combined_data = {
+        'name': name,
+        'imported_feedback': data_imported_feedback,
+        'jira_issues': data_jira_issues,
+        'assigned_feedback': data_assigned_feedback,
+        'tore_assigned_feedback': data_tore_assigned_feedback
+    }
+
+    collection_saved_data.insert_one(combined_data)
+
+    return jsonify({'message': 'Saved successfully'})
+
+
 @issue_feedback_relation_bp.route('/get_data_to_export/<feedback_name>', methods=['GET'])
 def get_data_to_export(feedback_name):
     # get imported feedback
