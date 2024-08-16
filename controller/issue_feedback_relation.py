@@ -50,12 +50,10 @@ def restore_data(name):
         data_imported_feedback = saved_data['imported_feedback']
         data_jira_issues = saved_data['jira_issues']
         data_assigned_feedback = saved_data['assigned_feedback']
-        data_tore_assigned_feedback = saved_data['tore_assigned_feedback']
 
         collection_imported_feedback.delete_many({})
         collection_jira_issues.delete_many({})
         collection_assigned_feedback.delete_many({})
-        collection_assigned_feedback_with_tore.delete_many({})
 
         for item in data_imported_feedback:
             collection_imported_feedback.insert_one(item)
@@ -65,9 +63,6 @@ def restore_data(name):
 
         for item in data_assigned_feedback:
             collection_assigned_feedback.insert_one(item)
-
-        for item in data_tore_assigned_feedback:
-            collection_assigned_feedback_with_tore.insert_one(item)
 
         return jsonify({'message': 'restored successful.'})
     else:
@@ -82,14 +77,12 @@ def save_data(name):
     data_imported_feedback = list(collection_imported_feedback.find())
     data_jira_issues = list(collection_jira_issues.find())
     data_assigned_feedback = list(collection_assigned_feedback.find())
-    data_tore_assigned_feedback = list(collection_assigned_feedback_with_tore.find())
 
     combined_data = {
         'name': name,
         'imported_feedback': data_imported_feedback,
         'jira_issues': data_jira_issues,
         'assigned_feedback': data_assigned_feedback,
-        'tore_assigned_feedback': data_tore_assigned_feedback
     }
 
     collection_saved_data.insert_one(combined_data)
