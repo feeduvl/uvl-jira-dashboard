@@ -93,10 +93,10 @@ def get_feedback():
     feedback_document = collection_feedback.find_one({"name": feedback_name})
     if feedback_name and feedback_document:
         try:
-            print("feedback doc: " + str(feedback_document))
+            logging.error("feedback doc: " + str(feedback_document))
             feedback_array = feedback_document.get("feedback", [])
-            print("reqeuest args: " + str(request.args))
-            print("request: " + str(request))
+            logging.error("reqeuest args: " + str(request.args))
+            logging.error("request: " + str(request))
             page = int(request.args.get("page", default=1))
             size = int(request.args.get("size", default=-1))
 
