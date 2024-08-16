@@ -392,7 +392,7 @@ def calculate_feedback_embedding(feedback_name):
         feedback_text = feedback.get("text")
         text_embedding = get_embeddings(feedback_text)
         feedback_embedding = {
-            'feedback_id': feedback.get('number'),
+            'feedback_id': feedback.get('id'),
             'embedding': text_embedding
         }
         feedback_embeddings.append(feedback_embedding)
