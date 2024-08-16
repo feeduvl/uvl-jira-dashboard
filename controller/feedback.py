@@ -125,7 +125,7 @@ def get_feedback():
 
             return jsonify(res)
         except Exception as e:
-            print(e)
+            print("this is error: " + e)
             return jsonify({"error": "Internal Server Error"}), 500
     else:
         res = {
