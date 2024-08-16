@@ -323,6 +323,10 @@ def assign_many_feedback_to_issues(max_similarity_value):
     jira_collection = collection_jira_issues.find({})
     # calculate embeddings for all feedback
     #feedback_list = feedback_name.split(",")
+
+    # Clear imported_feedback table
+    collection_imported_feedback.delete_many({})
+
     all_feedback_embeddings = []
     print("feedback list: " + str(feedback_list))
     for feedback_item in feedback_list:
@@ -369,6 +373,7 @@ def calculate_feedback_embedding(feedback_name):
     logging.error(feedback_name)
     #feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
     feedback_document = collection_feedback.find_one({"name": feedback_name})
+
     logging.error("feedback_document")
     feedback_array = feedback_document.get("documents", [])
     feedback_embeddings = []
@@ -376,6 +381,13 @@ def calculate_feedback_embedding(feedback_name):
     #logging.error(feedback_array)
     # iterate through all feedback and calculate embedding of each one
     for feedback in feedback_array:
+        # Write all feedback items to imported_feedback_array
+        imported_feedback_item = {
+            "id": feedback.get("id"),
+            "text": feedback.get("text")
+        }
+        collection_imported_feedback.insert_one(imported_feedback_item)
+
         logging.error("feedback object: " + str(feedback))
         feedback_text = feedback.get("text")
         text_embedding = get_embeddings(feedback_text)

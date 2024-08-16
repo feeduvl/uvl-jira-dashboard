@@ -150,7 +150,7 @@ def get_annotations_names(selectedFeedbackFileName):
     return names_list
 
 
-#@feedback_bp.route('/get_assigned_feedback/<issue_key>', methods=['GET'])
+@feedback_bp.route('/get_assigned_feedback/<issue_key>', methods=['GET'])
 def get_assigned_feedback(issue_key):
     try:
         # pagination
@@ -173,8 +173,8 @@ def get_assigned_feedback(issue_key):
         feedbacks = []
         # get feedback ids with start and end index for pagination
         for feedback_id in feedback_ids[start_index:end_index]:
-            feedback = [x for x in assigned_feedback if x["feedback_id"] == feedback_id][0]
-            #feedback = collection_assigned_feedback.find_one({'feedback_id': feedback_id})
+            #feedback = [x for x in assigned_feedback if x["feedback_id"] == feedback_id][0]
+            feedback = collection_imported_feedback.find_one({'id': feedback_id})
             print("feedback: " + str(feedback))
             if feedback:
                 feedback_array = feedback.get("feedback", [])
@@ -273,6 +273,6 @@ def delete_all_feedback(feedback_name):
     else:
         return jsonify({"message": "Dataset not found."}, 404)
 
-@feedback_bp.route('/get_assigned_feedback/<issue_key>', methods=['GET'])
+#@feedback_bp.route('/get_assigned_feedback/<issue_key>', methods=['GET'])
 def test_method(issue_key):
     return json.dumps(list(collection_feedback.find()), default=str)
