@@ -215,8 +215,8 @@ def get_assigned_feedback(issue_key):
         return jsonify({"error": "Internal Server Error"}), 500
 
 
-@feedback_bp.route('/get_unassigned_feedback/<issue_key>/', methods=['GET'])
-def get_unassigned_feedback(issue_key, feedback_name):
+@feedback_bp.route('/get_unassigned_feedback/<issue_key>', methods=['GET'])
+def get_unassigned_feedback(issue_key):
     # get all feedback ids that are assigned to a specific requirement
     assigned_feedback_ids = set(
         item['feedback_id'] for item in collection_assigned_feedback.find({'issue_key': issue_key}, {'feedback_id': 1}))
