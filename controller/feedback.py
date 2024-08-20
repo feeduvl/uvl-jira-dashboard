@@ -238,6 +238,11 @@ def get_unassigned_feedback(issue_key):
     # all unassigned feedback for the chosen requirement with pagination
     paginated_unassigned_feedback = unassigned_feedback[start_index:end_index]
 
+    #remove _id parameter which causes trouble at jsonify
+    for obj in paginated_unassigned_feedback:
+        if '_id' in obj:
+            del obj['_id']
+
     total_items = len(unassigned_feedback)
     total_pages = (total_items + size - 1) // size
 
