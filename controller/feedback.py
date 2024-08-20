@@ -247,7 +247,7 @@ def get_unassigned_feedback(issue_key):
         "totalItems": total_items,
         "totalPages": total_pages
     }
-
+    print(str(response))
     return jsonify(response)
 
 
