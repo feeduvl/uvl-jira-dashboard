@@ -241,13 +241,14 @@ def get_unassigned_feedback(issue_key):
     total_items = len(unassigned_feedback)
     total_pages = (total_items + size - 1) // size
 
+    logging.error("feedback: " + str(paginated_unassigned_feedback))
     response = {
         "feedback": paginated_unassigned_feedback,
         "currentPage": page,
         "totalItems": total_items,
         "totalPages": total_pages
     }
-    print(str(response))
+    logging.error("response: " + str(response))
     return jsonify(response)
 
 
