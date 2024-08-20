@@ -220,8 +220,8 @@ def get_unassigned_feedback(issue_key, feedback_name):
     # get all feedback ids that are assigned to a specific requirement
     assigned_feedback_ids = set(
         item['feedback_id'] for item in collection_assigned_feedback.find({'issue_key': issue_key}, {'feedback_id': 1}))
-    feedback_document = collection_feedback.find_one({"name": feedback_name})
-    feedback_array = feedback_document.get("feedback", [])
+    #feedback_document = collection_feedback.find_one({"name": feedback_name})
+    feedback_array = list(collection_imported_feedback.find())
     unassigned_feedback = []
     # get all feedback that is not assigned to the requirement
     for feedback_entry in feedback_array:
