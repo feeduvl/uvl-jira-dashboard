@@ -94,6 +94,7 @@ def save_data(name):
 def get_data_to_export(feedback_name):
     # get imported feedback
     feedback_document = collection_saved_data.find_one({"dataset": feedback_name})
+    logging.error("feedback_doc: " + str(feedback_document))
     imported_feedback = feedback_document.get("feedback", [])
     # find all assigned elements
     assigned_feedback_documents = collection_assigned_feedback.find({})
