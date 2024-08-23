@@ -93,10 +93,10 @@ def save_data(name):
 @issue_feedback_relation_bp.route('/get_data_to_export/<feedback_name>', methods=['GET'])
 def get_data_to_export(feedback_name):
     # get imported feedback
-    logging.error(list(collection_saved_data.find_one()))
-    feedback_document = collection_saved_data.find_one({"dataset": feedback_name})
-    logging.error("feedback_doc: " + str(feedback_document))
-    imported_feedback = feedback_document.get("feedback", [])
+    #logging.error(list(collection_saved_data.find_one()))
+    #feedback_document = collection_saved_data.find_one({"dataset": feedback_name})
+    #logging.error("feedback_doc: " + str(feedback_document))
+    imported_feedback = collection_imported_feedback.get("feedback", [])
     # find all assigned elements
     assigned_feedback_documents = collection_assigned_feedback.find({})
     # iterate through feedback and find assigned feedback
@@ -140,6 +140,7 @@ def get_data_to_export(feedback_name):
     for issue_key, feedback_ids in unique_issue_keys_with_feedback_ids.items():
         if issue_key in issue_info:
             # add feedback id and text for each requirement
+            logging.error(issue_key)
             feedback_data = issue_info[issue_key]['feedback_data']
             for feedback_id in feedback_ids:
                 if feedback_id in feedback_info:
