@@ -24,6 +24,27 @@ issue_feedback_relation_bp = Blueprint('issue_feedback_relation', __name__)
 tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
 model = DistilBertModel.from_pretrained('distilbert-base-uncased')
 
+@issue_feedback_relation_bp.route('/create_dashboard/<name>/<type>', methods=['POST'])
+def create_dashboard(name, type):
+    data = request.get_json()
+    if collection_saved_data.find_one({'name': name}):
+        return jsonify({'error': 'Name already exists!'}), 400
+
+    combined_data = {
+        'name': name,
+        'imported_feedback': [],
+        'jira_issues': [],
+        'assigned_feedback': [],
+        'datasets': [],
+        'type': type
+    }
+    collection_imported_feedback.delete_many({})
+    collection_jira_issues.delete_many({})
+    collection_assigned_feedback.delete_many({})
+    # TODO: Clear annotation table
+    collection_saved_data.insert_one(combined_data)
+
+    return jsonify({'message': 'Saved successfully'})
 
 @issue_feedback_relation_bp.route('/delete_data/<name>', methods=['DELETE'])
 def delete_data(name):
