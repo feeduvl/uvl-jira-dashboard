@@ -26,7 +26,6 @@ model = DistilBertModel.from_pretrained('distilbert-base-uncased')
 
 @issue_feedback_relation_bp.route('/create_dashboard/<name>/<type>', methods=['POST'])
 def create_dashboard(name, type):
-    data = request.get_json()
     if collection_saved_data.find_one({'name': name}):
         return jsonify({'error': 'Name already exists!'}), 400
 
