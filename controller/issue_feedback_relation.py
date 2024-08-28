@@ -64,25 +64,35 @@ def restore_data(name):
         for item in data_assigned_feedback:
             collection_assigned_feedback.insert_one(item)
 
-        return jsonify({'message': 'restored successful.'})
+        response = {
+            'message': 'restored successful.',
+            'type': saved_data['type'],
+            'datasets': saved_data['datasets']
+        }
+        return jsonify(response)
     else:
         return jsonify({'error': 'dataset not found.'}), 400
 
 
 @issue_feedback_relation_bp.route('/save_data/<name>', methods=['POST'])
 def save_data(name):
+    data = request.get_json()
     if collection_saved_data.find_one({'name': name}):
         return jsonify({'error': 'Name already exists!'}), 400
 
     data_imported_feedback = list(collection_imported_feedback.find())
     data_jira_issues = list(collection_jira_issues.find())
     data_assigned_feedback = list(collection_assigned_feedback.find())
+    datasets = data.get("datasets")
+    type = data.get("type")
 
     combined_data = {
         'name': name,
         'imported_feedback': data_imported_feedback,
         'jira_issues': data_jira_issues,
         'assigned_feedback': data_assigned_feedback,
+        'datasets': datasets,
+        'type': type
     }
 
     collection_saved_data.insert_one(combined_data)
