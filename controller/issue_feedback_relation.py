@@ -36,6 +36,7 @@ def create_dashboard(name, type):
         'assigned_feedback': [],
         'datasets': [],
         'type': type,
+        'threshold': "",
         'annotation': [],
         'classifier':""
     }
@@ -120,7 +121,8 @@ def save_data(name):
         'datasets': data.get("datasets"),
         'type': data.get("type"),
         'annotation': "",
-        'classifier': data.get("classifier")
+        'classifier': data.get("classifier"),
+        'threshold': data.get("threshold")
     }
     print(list(collection_imported_feedback.find()))
     print(combined_data)
