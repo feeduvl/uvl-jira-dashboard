@@ -106,8 +106,7 @@ def restore_data(name):
 def save_data(name):
     print("save data")
     data = request.get_json()
-    if collection_saved_data.find_one({'name': name}):
-        return jsonify({'error': 'Name already exists!'}), 400
+
 
     data_imported_feedback = list(collection_imported_feedback.find())
     data_jira_issues = list(collection_jira_issues.find())
@@ -126,8 +125,14 @@ def save_data(name):
     }
     print(list(collection_imported_feedback.find()))
     print(combined_data)
-
-    collection_saved_data.insert_one(combined_data)
+    if collection_saved_data.find_one({'name': name}):
+        collection_jira_issues.update_one(
+            {"name": name},
+            combined_data
+        )
+        collection_saved_data.update(combined_data)
+    else:
+        collection_saved_data.insert_one(combined_data)
 
     return jsonify({'message': 'Saved successfully'})
 
