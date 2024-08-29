@@ -87,7 +87,8 @@ def restore_data(name):
         response = {
             'message': 'restored successful.',
             'type': saved_data['type'],
-            'datasets': saved_data['datasets']
+            'datasets': saved_data['datasets'],
+            'name': name
         }
         return jsonify(response)
     else:
@@ -96,6 +97,7 @@ def restore_data(name):
 
 @issue_feedback_relation_bp.route('/save_data/<name>', methods=['POST'])
 def save_data(name):
+    print("save data")
     data = request.get_json()
     if collection_saved_data.find_one({'name': name}):
         return jsonify({'error': 'Name already exists!'}), 400
@@ -114,6 +116,8 @@ def save_data(name):
         'datasets': datasets,
         'type': type
     }
+    print(list(collection_imported_feedback.find()))
+    print(combined_data)
 
     collection_saved_data.insert_one(combined_data)
 
