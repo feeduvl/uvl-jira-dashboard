@@ -84,11 +84,15 @@ def restore_data(name):
         for item in data_assigned_feedback:
             collection_assigned_feedback.insert_one(item)
 
+        #TODO: Load Annotation
+
         response = {
             'message': 'restored successful.',
             'type': saved_data['type'],
             'datasets': saved_data['datasets'],
-            'name': name
+            'name': name,
+            'classifier': saved_data['classifier'],
+            'threshold': saved_data['threshold']
         }
         return jsonify(response)
     else:
@@ -105,16 +109,16 @@ def save_data(name):
     data_imported_feedback = list(collection_imported_feedback.find())
     data_jira_issues = list(collection_jira_issues.find())
     data_assigned_feedback = list(collection_assigned_feedback.find())
-    datasets = data.get("datasets")
-    type = data.get("type")
 
     combined_data = {
         'name': name,
         'imported_feedback': data_imported_feedback,
         'jira_issues': data_jira_issues,
         'assigned_feedback': data_assigned_feedback,
-        'datasets': datasets,
-        'type': type
+        'datasets': data.get("datasets"),
+        'type': data.get("type"),
+        'annotation': "",
+        'classifier': data.get("classifier")
     }
     print(list(collection_imported_feedback.find()))
     print(combined_data)
