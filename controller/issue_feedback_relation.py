@@ -126,11 +126,11 @@ def save_data(name):
     print(list(collection_imported_feedback.find()))
     print(combined_data)
     if collection_saved_data.find_one({'name': name}):
-        collection_jira_issues.update_one(
+        collection_saved_data.update_one(
             {"name": name},
-            combined_data
+            {"$set": combined_data}
         )
-        collection_saved_data.update(combined_data)
+        #collection_saved_data.update(combined_data)
     else:
         collection_saved_data.insert_one(combined_data)
 
