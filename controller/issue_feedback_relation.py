@@ -15,6 +15,8 @@ collection_assigned_feedback = mongo_db.collection_assigned_feedback
 collection_imported_feedback = mongo_db.collection_imported_feedback
 collection_feedback = mongo_db.collection_feedback
 collection_saved_data = mongo_db.collection_saved_data
+collection_annotations = mongo_db.collection_annotations
+
 # load spacy library
 nlp = spacy.load("en_core_web_sm")
 
@@ -31,19 +33,15 @@ def create_dashboard(name, type):
 
     combined_data = {
         'name': name,
-        'imported_feedback': [],
-        'jira_issues': [],
-        'assigned_feedback': [],
         'datasets': [],
         'type': type,
         'threshold': "",
-        'annotation': [],
         'classifier':""
     }
     collection_imported_feedback.delete_many({})
     collection_jira_issues.delete_many({})
     collection_assigned_feedback.delete_many({})
-    # TODO: Clear annotation table
+    collection_annotations.delete_many({})
     collection_saved_data.insert_one(combined_data)
 
     return jsonify({'message': 'Saved successfully'})
@@ -73,10 +71,12 @@ def restore_data(name):
         data_imported_feedback = saved_data['imported_feedback']
         data_jira_issues = saved_data['jira_issues']
         data_assigned_feedback = saved_data['assigned_feedback']
+        data_annotation = saved_data['annotation']
 
         collection_imported_feedback.delete_many({})
         collection_jira_issues.delete_many({})
         collection_assigned_feedback.delete_many({})
+        collection_annotations.delete_many({})
 
         for item in data_imported_feedback:
             collection_imported_feedback.insert_one(item)
@@ -87,7 +87,8 @@ def restore_data(name):
         for item in data_assigned_feedback:
             collection_assigned_feedback.insert_one(item)
 
-        #TODO: Load Annotation
+        for item in data_annotation:
+            collection_annotations.insert_one(item)
 
         response = {
             'message': 'restored successful.',
@@ -111,7 +112,7 @@ def save_data(name):
     data_imported_feedback = list(collection_imported_feedback.find())
     data_jira_issues = list(collection_jira_issues.find())
     data_assigned_feedback = list(collection_assigned_feedback.find())
-
+    data_annotation = list(collection_annotations.find())
     combined_data = {
         'name': name,
         'imported_feedback': data_imported_feedback,
@@ -119,7 +120,7 @@ def save_data(name):
         'assigned_feedback': data_assigned_feedback,
         'datasets': data.get("datasets"),
         'type': data.get("type"),
-        'annotation': "",
+        'annotation': data_annotation,
         'classifier': data.get("classifier"),
         'threshold': data.get("threshold")
     }
