@@ -144,6 +144,13 @@ def get_feedback_names():
     names_list = [doc["name"] for doc in feedback]
     return names_list
 
+@feedback_bp.route('/get_feedback_names_dates', methods=['GET'])
+def get_feedback_names_dates():
+    # find all feedback names in all available feedback datasets
+    feedback = collection_feedback.find({})
+    names_list = [{"name": doc["name"], "uploaded_at": doc["uploaded_at"]} for doc in feedback]
+    return names_list
+
 
 @feedback_bp.route('/get_annotations_names/<selectedFeedbackFileName>', methods=['GET'])
 def get_annotations_names(selectedFeedbackFileName):

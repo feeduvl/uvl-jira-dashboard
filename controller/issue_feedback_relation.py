@@ -116,12 +116,20 @@ def save_data(name):
     data_jira_issues = list(collection_jira_issues.find())
     data_assigned_feedback = list(collection_assigned_feedback.find())
     data_annotation = collection_annotations.find_one({'name': name})
+    datasets_with_dates = []
+    for dataset in data.get("datasets"):
+        dataset_with_date={}
+        dataset_with_date['name'] = dataset
+        dataset_with_date['uploaded_at'] = collection_feedback.find_one({"name: dataset_name"}).get('uploaded_at')
+        datasets_with_dates.append(dataset_with_date)
+
+
     combined_data = {
         'name': name,
         'imported_feedback': data_imported_feedback,
         'jira_issues': data_jira_issues,
         'assigned_feedback': data_assigned_feedback,
-        'datasets': data.get("datasets"),
+        'datasets': datasets_with_dates,
         'type': data.get("type"),
         'annotation': data_annotation,
         'classifier': data.get("classifier"),
