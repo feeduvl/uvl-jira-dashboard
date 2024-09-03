@@ -120,7 +120,7 @@ def save_data(name):
     for dataset in data.get("datasets"):
         dataset_with_date={}
         dataset_with_date['name'] = dataset
-        dataset_with_date['uploaded_at'] = collection_feedback.find_one({"name: dataset_name"}).get('uploaded_at')
+        dataset_with_date['uploaded_at'] = collection_feedback.find_one({"name": dataset}).get('uploaded_at')
         datasets_with_dates.append(dataset_with_date)
 
 
