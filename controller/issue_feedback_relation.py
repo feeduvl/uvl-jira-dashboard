@@ -41,7 +41,7 @@ def create_dashboard(name, type):
     collection_imported_feedback.delete_many({})
     collection_jira_issues.delete_many({})
     collection_assigned_feedback.delete_many({})
-    collection_annotations.delete_many({})
+    #collection_annotations.delete_many({})
     collection_saved_data.insert_one(combined_data)
 
     return jsonify({'message': 'Saved successfully'})
@@ -76,7 +76,7 @@ def restore_data(name):
         collection_imported_feedback.delete_many({})
         collection_jira_issues.delete_many({})
         collection_assigned_feedback.delete_many({})
-        collection_annotations.delete_many({})
+        #collection_annotations.delete_many({})
 
         for item in data_imported_feedback:
             collection_imported_feedback.insert_one(item)
@@ -87,8 +87,11 @@ def restore_data(name):
         for item in data_assigned_feedback:
             collection_assigned_feedback.insert_one(item)
 
-        for item in data_annotation:
-            collection_annotations.insert_one(item)
+        collection_annotations.update_one(
+            {"name": name},
+            {"$set": data_annotation},
+            upsert=True
+        )
 
         response = {
             'message': 'restored successful.',
@@ -112,7 +115,7 @@ def save_data(name):
     data_imported_feedback = list(collection_imported_feedback.find())
     data_jira_issues = list(collection_jira_issues.find())
     data_assigned_feedback = list(collection_assigned_feedback.find())
-    data_annotation = list(collection_annotations.find())
+    data_annotation = collection_annotations.find_one({'name': name})
     combined_data = {
         'name': name,
         'imported_feedback': data_imported_feedback,
