@@ -87,11 +87,12 @@ def restore_data(name):
         for item in data_assigned_feedback:
             collection_assigned_feedback.insert_one(item)
 
-        collection_annotations.update_one(
-            {"name": name},
-            {"$set": data_annotation},
-            upsert=True
-        )
+        if data_annotation:
+            collection_annotations.update_one(
+                {"name": name},
+                {"$set": data_annotation},
+                upsert=True
+            )
 
         response = {
             'message': 'restored successful.',
