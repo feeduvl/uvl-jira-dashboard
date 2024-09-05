@@ -100,6 +100,7 @@ def restore_data(name):
             'datasets': saved_data['datasets'],
             'name': name,
             'classifier': saved_data['classifier'],
+            'classifier_detail': saved_data['classifier_detail'],
             'threshold': saved_data['threshold']
         }
         return jsonify(response)
@@ -134,6 +135,7 @@ def save_data(name):
         'type': data.get("type"),
         'annotation': data_annotation,
         'classifier': data.get("classifier"),
+        'classifier_detail': data.get("classifier_detail"),
         'threshold': data.get("threshold")
     }
     print(list(collection_imported_feedback.find()))
