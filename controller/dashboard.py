@@ -36,7 +36,12 @@ def create_dashboard(name, type):
         'datasets': [],
         'type': type,
         'threshold': "",
-        'classifier':""
+        'classifier':"",
+        'imported_feedback': [],
+        'jira_issues': [],
+        'assigned_feedback': [],
+        'annotation': [],
+        'classifier_detail': "",
     }
     collection_imported_feedback.delete_many({})
     collection_jira_issues.delete_many({})
