@@ -57,7 +57,7 @@ def load_feedback(feedback_name):
         if selected_document:
             return jsonify({"message": "found feedback"})
         # if the feedback not in collection, get it from the collection of all available feedback datasets
-        else: #TODO: Eigentlich dürfte dieser Fall nie mehr auftreten
+        else:
             # find chosen feedback dataset in all available datasets
             feedback = collection_feedback.find_one({"name": feedback_name})
             ids_and_texts = []
@@ -144,6 +144,7 @@ def get_feedback_names():
     names_list = [doc["name"] for doc in feedback]
     return names_list
 
+
 @feedback_bp.route('/get_feedback_names_dates', methods=['GET'])
 def get_feedback_names_dates():
     # find all feedback names in all available feedback datasets
@@ -183,14 +184,14 @@ def get_assigned_feedback(issue_key):
         feedbacks = []
         # get feedback ids with start and end index for pagination
         for feedback_id in feedback_ids[start_index:end_index]:
-            #feedback = [x for x in assigned_feedback if x["feedback_id"] == feedback_id][0]
+            # feedback = [x for x in assigned_feedback if x["feedback_id"] == feedback_id][0]
             feedback = collection_imported_feedback.find_one({'id': feedback_id})
             print("feedback: " + str(feedback))
             if feedback:
-                #feedback_array = feedback.get("feedback", [])
+                # feedback_array = feedback.get("feedback", [])
                 print("step 1")
                 # find all feedback
-                #matching_feedback = next((fb for fb in feedback_array if fb.get('id') == feedback_id), None)
+                # matching_feedback = next((fb for fb in feedback_array if fb.get('id') == feedback_id), None)
                 print("step 2")
                 # find all feedback that is assigned
                 matching_assigned_feedback = next((af for af in assigned_feedback if af['feedback_id'] == feedback_id),
@@ -227,7 +228,6 @@ def get_unassigned_feedback(issue_key):
     # get all feedback ids that are assigned to a specific requirement
     assigned_feedback_ids = set(
         item['feedback_id'] for item in collection_assigned_feedback.find({'issue_key': issue_key}, {'feedback_id': 1}))
-    #feedback_document = collection_feedback.find_one({"name": feedback_name})
     feedback_array = list(collection_imported_feedback.find())
     unassigned_feedback = []
     # get all feedback that is not assigned to the requirement
@@ -245,7 +245,7 @@ def get_unassigned_feedback(issue_key):
     # all unassigned feedback for the chosen requirement with pagination
     paginated_unassigned_feedback = unassigned_feedback[start_index:end_index]
 
-    #remove _id parameter which causes trouble at jsonify
+    # remove _id parameter which causes trouble at jsonify
     for obj in paginated_unassigned_feedback:
         if '_id' in obj:
             del obj['_id']
@@ -288,7 +288,3 @@ def delete_all_feedback(feedback_name):
         return jsonify({"message": "Feedback deleted."})
     else:
         return jsonify({"message": "Dataset not found."}, 404)
-
-#@feedback_bp.route('/get_assigned_feedback/<issue_key>', methods=['GET'])
-def test_method(issue_key):
-    return json.dumps(list(collection_feedback.find()), default=str)

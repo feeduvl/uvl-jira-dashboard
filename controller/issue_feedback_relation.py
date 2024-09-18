@@ -1,4 +1,3 @@
-from operator import itemgetter
 
 from transformers import DistilBertTokenizer, DistilBertModel
 import torch
@@ -8,7 +7,6 @@ import spacy
 import re
 import numpy as np
 from mongo import mongo_db
-import logging
 
 collection_jira_issues = mongo_db.collection_jira_issues
 collection_assigned_feedback = mongo_db.collection_assigned_feedback
@@ -26,6 +24,7 @@ issue_feedback_relation_bp = Blueprint('issue_feedback_relation', __name__)
 tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
 model = DistilBertModel.from_pretrained('distilbert-base-uncased')
 
+
 @issue_feedback_relation_bp.route('/delete_data/<name>', methods=['DELETE'])
 def delete_data(name):
     if collection_saved_data.find_one({'name': name}):
@@ -33,6 +32,7 @@ def delete_data(name):
         return jsonify({'message': f'Data with name {name} deleted successfully'})
     else:
         return jsonify({'error': f'Data with name {name} not found'}), 404
+
 
 @issue_feedback_relation_bp.route('/get_data_to_export/<feedback_name>', methods=['GET'])
 def get_data_to_export(feedback_name):
@@ -113,7 +113,6 @@ def add_feedback_to_issue():
         {"message": "Feedback relations added successfully"})
 
 
-
 @issue_feedback_relation_bp.route('/add_issue_to_feedback', methods=['POST'])
 def add_issue_to_feedback():
     data = request.get_json()
@@ -136,7 +135,6 @@ def add_issue_to_feedback():
         {"message": "Feedback relations added successfully"})
 
 
-
 @issue_feedback_relation_bp.route('/delete_feedback/<issue_key>/<feedback_id>', methods=['DELETE'])
 def delete_feedback_from_issue(issue_key, feedback_id):
     # delete one feedback the is related to one requirement
@@ -144,13 +142,11 @@ def delete_feedback_from_issue(issue_key, feedback_id):
     return jsonify({"message": "Feedback deleted successfully"})
 
 
-
 @issue_feedback_relation_bp.route('/delete_assigned_feedback_for_issue/<issue_key>', methods=['DELETE'])
 def delete_assigned_feedback_for_issue(issue_key):
     # delete all feedback that are related to the chosen requirement
     collection_assigned_feedback.delete_many({'issue_key': issue_key})
     return jsonify({'error': 'Feedback deleted'})
-
 
 
 @issue_feedback_relation_bp.route('/delete_assigned_issues_for_feedback/<feedback_id>', methods=['DELETE'])
@@ -177,6 +173,7 @@ def get_embeddings_without_spacy(text):
     # calculates the mean of the embedded vectors along the first dimension and stores the result
     summary_embedding = np.mean(embedding, axis=0)
     return summary_embedding
+
 
 # get embeddings for standard approach
 def get_embeddings(text):
@@ -264,7 +261,6 @@ def assign_many_feedback_to_issues(max_similarity_value):
     collection_assigned_feedback.delete_many({})
     jira_collection = collection_jira_issues.find({})
     # calculate embeddings for all feedback
-    #feedback_list = feedback_name.split(",")
 
     # Clear imported_feedback table
     collection_imported_feedback.delete_many({})
@@ -303,8 +299,8 @@ def assign_many_feedback_to_issues(max_similarity_value):
                         collection_assigned_feedback.insert_one(assigned_feedback)
     return jsonify({'message': 'assignment was successful'})
 
+
 def calculate_feedback_embedding(feedback_name):
-    #feedback_document = collection_imported_feedback.find_one({"dataset": feedback_name})
     feedback_document = collection_feedback.find_one({"name": feedback_name})
 
     feedback_array = feedback_document.get("documents", [])

@@ -1,14 +1,7 @@
-from operator import itemgetter
-
 from transformers import DistilBertTokenizer, DistilBertModel
-import torch
 from flask import jsonify, Blueprint, request
-from sklearn.metrics.pairwise import cosine_similarity
 import spacy
-import re
-import numpy as np
 from mongo import mongo_db
-import logging
 
 collection_jira_issues = mongo_db.collection_jira_issues
 collection_assigned_feedback = mongo_db.collection_assigned_feedback
@@ -26,17 +19,18 @@ dashboard_bp = Blueprint('dashboard', __name__)
 tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
 model = DistilBertModel.from_pretrained('distilbert-base-uncased')
 
+
 @dashboard_bp.route('/create_dashboard/<name>/<type>', methods=['POST'])
-def create_dashboard(name, type):
+def create_dashboard(name, dashboard_type):
     if collection_saved_data.find_one({'name': name}):
         return jsonify({'error': 'Name already exists!'}), 400
 
     combined_data = {
         'name': name,
         'datasets': [],
-        'type': type,
+        'type': dashboard_type,
         'threshold': "",
-        'classifier':"",
+        'classifier': "",
         'imported_feedback': [],
         'jira_issues': [],
         'assigned_feedback': [],
@@ -46,10 +40,10 @@ def create_dashboard(name, type):
     collection_imported_feedback.delete_many({})
     collection_jira_issues.delete_many({})
     collection_assigned_feedback.delete_many({})
-    #collection_annotations.delete_many({})
     collection_saved_data.insert_one(combined_data)
 
     return jsonify({'message': 'Saved successfully'})
+
 
 @dashboard_bp.route('/restore_data/<name>', methods=['GET'])
 def restore_data(name):
@@ -64,7 +58,6 @@ def restore_data(name):
         collection_imported_feedback.delete_many({})
         collection_jira_issues.delete_many({})
         collection_assigned_feedback.delete_many({})
-        #collection_annotations.delete_many({})
 
         for item in data_imported_feedback:
             collection_imported_feedback.insert_one(item)
@@ -101,18 +94,15 @@ def save_data(name):
     print("save data")
     data = request.get_json()
 
-
     data_imported_feedback = list(collection_imported_feedback.find())
     data_jira_issues = list(collection_jira_issues.find())
     data_assigned_feedback = list(collection_assigned_feedback.find())
     data_annotation = collection_annotations.find_one({'name': name})
     datasets_with_dates = []
     for dataset in data.get("datasets"):
-        dataset_with_date={}
-        dataset_with_date['name'] = dataset
-        dataset_with_date['uploaded_at'] = collection_feedback.find_one({"name": dataset}).get('uploaded_at')
+        dataset_with_date = {'name': dataset,
+                            'uploaded_at': collection_feedback.find_one({"name": dataset}).get('uploaded_at')}
         datasets_with_dates.append(dataset_with_date)
-
 
     combined_data = {
         'name': name,
@@ -133,11 +123,11 @@ def save_data(name):
             {"name": name},
             {"$set": combined_data}
         )
-        #collection_saved_data.update(combined_data)
     else:
         collection_saved_data.insert_one(combined_data)
 
     return jsonify({'message': 'Saved successfully'})
+
 
 @dashboard_bp.route('/get_saved_data_names', methods=['GET'])
 def get_unique_names():
