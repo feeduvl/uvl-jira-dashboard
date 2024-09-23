@@ -99,19 +99,26 @@ def return_dashboard(name):
         data_assigned_feedback = saved_data['assigned_feedback']
         data_annotation = saved_data['annotation']
 
-        response = {
-            'message': 'restored successful.',
-            'type': saved_data['type'],
-            'datasets': saved_data['datasets'],
-            'name': name,
-            'classifier': saved_data['classifier'],
-            'classifier_detail': saved_data['classifier_detail'],
-            'threshold': saved_data['threshold'],
-            'imported_feedback': data_imported_feedback,
-            'jira_issues': data_jira_issues,
-            'assigned_feedback': data_assigned_feedback,
-            'annotation': data_annotation
-        }
+        if data_annotation:
+            response = {
+                'message': 'Dashboard return.',
+                'type': saved_data['type'],
+                'datasets': saved_data['datasets'],
+                'name': name,
+                'imported_feedback': data_imported_feedback,
+                'jira_issues': data_jira_issues,
+                'assigned_feedback': data_assigned_feedback,
+            }         
+        else:
+            response = {
+                'message': 'Dashboard return.',
+                'type': saved_data['type'],
+                'datasets': saved_data['datasets'],
+                'name': name,
+                'classifier': saved_data['classifier'],
+                'classifier_detail': saved_data['classifier_detail'],
+                'annotation': data_annotation
+            }       
         return jsonify(response)
     else:
         return jsonify({'error': 'dataset not found.'}), 400
