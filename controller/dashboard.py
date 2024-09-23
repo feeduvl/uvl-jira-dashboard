@@ -94,11 +94,10 @@ def return_dashboard(name):
     saved_data = collection_saved_data.find_one({'name': name})
 
     if saved_data:
-        saved_data['_id'] = str(saved_data['_id']) if '_id' in saved_data else None
-        data_imported_feedback = saved_data['imported_feedback']
-        data_jira_issues = saved_data['jira_issues']
-        data_assigned_feedback = saved_data['assigned_feedback']
-        data_annotation = saved_data['annotation']
+        data_imported_feedback = str(saved_data['imported_feedback'])
+        data_jira_issues = str(saved_data['jira_issues'])
+        data_assigned_feedback = str(saved_data['assigned_feedback'])
+        data_annotation = str(saved_data['annotation'])
 
         if data_annotation:
             response = {
