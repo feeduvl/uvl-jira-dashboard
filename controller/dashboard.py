@@ -99,26 +99,27 @@ def return_dashboard(name):
         data_assigned_feedback = saved_data['assigned_feedback']
         data_annotation = saved_data['annotation']
 
-        if not data_annotation:
+        if data_annotation:
             response = {
-                'message': 'Usage Inforamtion Dashboard return.',
-                'type': saved_data['type'],
-                'datasets': saved_data['datasets'],
-                'name': name,
-                'imported_feedback': data_imported_feedback,
-                'jira_issues': data_jira_issues,
-                'assigned_feedback': data_assigned_feedback,
-            }         
+                    'message': 'Usage Information Dashboard return.',
+                    'type': saved_data['type'],
+                    'datasets': saved_data['datasets'],
+                    'name': name,
+                    'classifier': saved_data['classifier'],
+                    'classifier_detail': saved_data['classifier_detail'],
+                    'annotation': data_annotation
+                }       
         else:
             response = {
                 'message': 'Relation Dashboard return.',
                 'type': saved_data['type'],
                 'datasets': saved_data['datasets'],
                 'name': name,
-                'classifier': saved_data['classifier'],
-                'classifier_detail': saved_data['classifier_detail'],
-                'annotation': data_annotation
-            }       
+                'imported_feedback': data_imported_feedback,
+                'jira_issues': data_jira_issues,
+                'assigned_feedback': data_assigned_feedback,
+            }   
+            
         return jsonify(response)
     else:
         return jsonify({'error': 'dataset not found.'}), 400
