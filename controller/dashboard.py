@@ -99,7 +99,7 @@ def return_dashboard(name):
         data_assigned_feedback = str(saved_data['assigned_feedback'])
         data_annotation = str(saved_data['annotation'])
 
-        if data_annotation:
+        if saved_data['type']=="Annotation":
             response = {
                     'message': 'Usage Information Dashboard return.',
                     'type': saved_data['type'],
