@@ -89,6 +89,33 @@ def restore_data(name):
         return jsonify({'error': 'dataset not found.'}), 400
 
 
+@dashboard_bp.route('/return_dashboard/<name>', methods=['GET'])
+def return_dashboard(name):
+    saved_data = collection_saved_data.find_one({'name': name})
+
+    if saved_data:
+        data_imported_feedback = saved_data['imported_feedback']
+        data_jira_issues = saved_data['jira_issues']
+        data_assigned_feedback = saved_data['assigned_feedback']
+        data_annotation = saved_data['annotation']
+
+        response = {
+            'message': 'restored successful.',
+            'type': saved_data['type'],
+            'datasets': saved_data['datasets'],
+            'name': name,
+            'classifier': saved_data['classifier'],
+            'classifier_detail': saved_data['classifier_detail'],
+            'threshold': saved_data['threshold'],
+            'imported_feedback': data_imported_feedback,
+            'jira_issues': data_jira_issues,
+            'assigned_feedback': data_assigned_feedback,
+            'annotation': data_annotation
+        }
+        return jsonify(response)
+    else:
+        return jsonify({'error': 'dataset not found.'}), 400
+
 @dashboard_bp.route('/save_data/<name>', methods=['POST'])
 def save_data(name):
     print("save data")
