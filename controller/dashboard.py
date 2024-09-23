@@ -99,9 +99,9 @@ def return_dashboard(name):
         data_assigned_feedback = saved_data['assigned_feedback']
         data_annotation = saved_data['annotation']
 
-        if data_annotation:
+        if not data_annotation:
             response = {
-                'message': 'Dashboard return.',
+                'message': 'Usage Inforamtion Dashboard return.',
                 'type': saved_data['type'],
                 'datasets': saved_data['datasets'],
                 'name': name,
@@ -111,7 +111,7 @@ def return_dashboard(name):
             }         
         else:
             response = {
-                'message': 'Dashboard return.',
+                'message': 'Relation Dashboard return.',
                 'type': saved_data['type'],
                 'datasets': saved_data['datasets'],
                 'name': name,
