@@ -166,7 +166,11 @@ def save_data(name):
 
 @dashboard_bp.route('/get_saved_data_names', methods=['GET'])
 def get_unique_names():
-    # get names of saved data
-    saved_data = list(collection_saved_data.find({}, {'_id': 0, 'name': 1}))
-    unique_names = set(item['name'] for item in saved_data if 'name' in item)
-    return jsonify(list(unique_names))
+    # get names and types of saved data
+    saved_data = list(collection_saved_data.find({}, {'_id': 0, 'name': 1, 'type': 1}))
+
+    unique_data = []
+    for item in saved_data:
+        if 'name' in item and 'type' in item:
+            unique_data.append({'name': item['name'], 'type': item['type']})
+    return jsonify(unique_data)
