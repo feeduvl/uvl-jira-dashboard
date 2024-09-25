@@ -20,7 +20,7 @@ tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
 model = DistilBertModel.from_pretrained('distilbert-base-uncased')
 
 
-@dashboard_bp.route('/create_dashboard/<name>/<type>', methods=['POST'])
+@dashboard_bp.route('/create_dashboard/<name>/<dashboard_type>', methods=['POST'])
 def create_dashboard(name, dashboard_type):
     if collection_saved_data.find_one({'name': name}):
         return jsonify({'error': 'Name already exists!'}), 400
